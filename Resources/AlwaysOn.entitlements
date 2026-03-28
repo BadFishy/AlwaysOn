@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Location Services -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
+    
+    <!-- WiFi Client (不需要开发者账户) -->
+    <key>com.apple.security.wifi-client</key>
+    <true/>
+</dict>
+</plist>

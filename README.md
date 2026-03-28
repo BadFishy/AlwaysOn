@@ -5,8 +5,8 @@
 <h1 align="center">AlwaysOn</h1>
 
 <p align="center">
-  <strong>Your Mac Never Sleeps.</strong><br>
-  In the age of AI agents, your Mac should run forever.
+  <strong>你的 Mac 永不休眠。</strong><br>
+  在 AI Agent 时代，让你的 Mac 永远在线。
 </p>
 
 <p align="center">
@@ -18,122 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GGG-HHH/AlwaysOn/releases/latest/download/AlwaysOn.zip"><strong>Download</strong></a> · <a href="https://ggg-hhh.github.io/AlwaysOn/">Website</a> · <a href="#build-from-source">Build from Source</a>
-</p>
-
-<p align="center">
-  <sub>Works on all Macs: MacBook · Mac mini · iMac · Mac Studio · Mac Pro</sub>
-</p>
-
----
-
-## Features
-
-> **One-Click Sleep Prevention** — Disables system sleep entirely, including lid close. AI agents, builds, and downloads keep running.
-
-> **Smart Battery Protection** — Monitors every 60s. Lid closed + ≤5% → auto sleep. Lid open → notification only. Warning at 10%.
-
-> **Zero-Config Privileges** — First launch triggers native macOS password dialog. One password, forever passwordless. Only `pmset`.
-
-> **Menu Bar Native** — SF Symbols icon with live battery %. Toggle on/off, launch at login. No Dock icon, no bloat.
-
-## Setup
-
-```
-1. Download → Unzip → Drag to /Applications
-2. Right-click → Open (first time only)
-3. Enter password once
-4. Click Enable ⚡ Done.
-```
-
-## Menu Bar
-
-```
-⚡ 78%
-├── Enable/Disable AlwaysOn
-├── ──────────────
-├── Battery: 78%
-├── Power: AC / Battery
-├── ──────────────
-├── ✓ Launch at Login
-├── ──────────────
-└── Quit
-```
-
-## Under the Hood
-
-| | |
-|:--|:--|
-| **Language** | Pure Swift |
-| **Binary** | 83KB, Universal (arm64 + x86_64) |
-| **Frameworks** | AppKit, IOKit, ServiceManagement |
-| **Sleep control** | `pmset disablesleep` + `caffeinate -ims` |
-| **Privilege** | `/etc/sudoers.d/pmset` (NOPASSWD for pmset only) |
-| **Login item** | SMAppService (macOS 13+) with LaunchAgent fallback |
-| **Signing** | Ad-hoc codesigned |
-| **Min OS** | macOS 13.0 (Ventura) |
-
-## Build from Source
-
-```bash
-git clone https://github.com/GGG-HHH/AlwaysOn.git
-cd AlwaysOn
-./build.sh
-open AlwaysOn.app
-```
-
-## Uninstall
-
-1. Click **Disable** → **Quit** in the menu bar (restores power defaults)
-2. Delete `AlwaysOn.app` from Applications
-3. Optional: `sudo rm /etc/sudoers.d/pmset`
-
-## FAQ
-
-<details>
-<summary><b>Why can't I open the app?</b></summary>
-<br>
-Right-click → Open → Open. One-time only.<br><br>
-If it still won't open: <b>System Settings → Privacy & Security → Security</b>, click <b>"Open Anyway"</b>.
-</details>
-
-<details>
-<summary><b>What does the password prompt do?</b></summary>
-<br>
-Creates <code>/etc/sudoers.d/pmset</code> to allow passwordless <code>pmset</code>. Nothing else.
-</details>
-
-<details>
-<summary><b>Can't see the menu bar icon?</b></summary>
-<br>
-On notch MacBooks, too many icons can push it behind the camera. Hold <code>⌘</code> to drag and reorder icons, or use <a href="https://github.com/jordanbaird/Ice">Ice</a> (free & open source) to manage overflow.
-</details>
-
-<details>
-<summary><b>Force-quit without disabling?</b></summary>
-<br>
-Run <code>sudo pmset -a disablesleep 0</code> in Terminal, or relaunch the app and click Disable.
-</details>
-
-## License
-
-MIT
-
----
-
-<p align="center">
-  <img src="site/icon.svg" width="120" height="120" alt="AlwaysOn">
-</p>
-
-<h1 align="center">AlwaysOn</h1>
-
-<p align="center">
-  <strong>让你的 Mac 永不休眠。</strong><br>
-  AI Agent 时代，你的 Mac 应该永远在线。
-</p>
-
-<p align="center">
-  <a href="https://github.com/GGG-HHH/AlwaysOn/releases/latest/download/AlwaysOn.zip"><strong>下载</strong></a> · <a href="https://ggg-hhh.github.io/AlwaysOn/">官网</a> · <a href="#从源码构建">从源码构建</a>
+  <a href="https://github.com/mochimon/AlwaysOn/releases/latest/download/AlwaysOn.zip"><strong>下载</strong></a> · <a href="#安装">安装说明</a> · <a href="#配置">配置指南</a>
 </p>
 
 <p align="center">
@@ -142,39 +27,177 @@ MIT
 
 ---
 
+## 功能对比
+
+| 功能 | 原版 AlwaysOn | AlwaysOn (增强版) |
+|:---|:---|:---|
+| 一键防休眠 | ✅ | ✅ |
+| 智能电池保护 | ✅ | ✅ |
+| 零配置权限 | ✅ | ✅ |
+| 原生菜单栏 | ✅ | ✅ |
+| **WiFi 白名单** | ❌ | ✅ 连接特定 WiFi 自动防休眠 |
+| **开盖检测** | ❌ | ✅ 自动检测笔记本盖子状态 |
+| **状态推送** | ❌ | ✅ 支持通用 Webhook |
+| **国际化支持** | ❌ | ✅ 中文/英文自动切换 |
+| **增强测试功能** | ❌ | ✅ 配置检查 + HTTP 响应显示 |
+
+---
+
 ## 功能
 
 > **一键防休眠** — 完全禁用系统休眠，包括合盖。AI Agent、长时间编译、通宵下载不中断。
+
+> **WiFi 白名单** — 连接指定 WiFi 时自动启用防休眠，离开则自动恢复。支持"家里 WiFi"、"办公室"等场景。
 
 > **智能电池保护** — 每 60 秒检测电量。合盖 + ≤5% → 自动休眠。开盖 → 仅通知。10% 时警告。
 
 > **零配置权限** — 首次启动弹出 macOS 原生密码框，输入一次即永久免密。仅授权 `pmset`。
 
+> **状态推送** — 支持通用 Webhook，状态变化自动推送，远程掌握 Mac 状态。
+
 > **原生菜单栏** — SF Symbols 图标 + 实时电量。开关切换，支持开机自启。无 Dock 图标。
 
+---
+
 ## 安装
+
+### 方式一：直接下载
 
 ```
 1. 下载 → 解压 → 拖入 /Applications
 2. 右键 → 打开（仅首次）
 3. 输入一次密码
-4. 点击启用 ⚡ 搞定。
+4. 点击启用 ☕ 搞定。
 ```
 
-## 从源码构建
+### 方式二：从源码构建
 
 ```bash
-git clone https://github.com/GGG-HHH/AlwaysOn.git
+git clone https://github.com/mochimon/AlwaysOn.git
 cd AlwaysOn
 ./build.sh
 open AlwaysOn.app
 ```
 
+---
+
+## 配置
+
+编辑 `~/.alwayson/config.json`：
+
+```json
+{
+  "whitelist_wifi": ["家里5G", "办公室"],
+  "check_interval": 60,
+  "enable_wake_on_power": true,
+  "webhook_enabled": true,
+  "webhook_url": "https://your-webhook-url.com"
+}
+```
+
+### 字段说明
+
+| 字段 | 说明 | 默认值 |
+|:---|:---|:---|
+| `whitelist_wifi` | 白名单 WiFi 列表，连接这些网络时自动防休眠 | `[]` |
+| `check_interval` | 检测间隔（秒） | `60` |
+| `enable_wake_on_power` | 插入电源时是否自动唤醒 | `true` |
+| `webhook_enabled` | 是否启用 Webhook 推送 | `false` |
+| `webhook_url` | 通用 Webhook URL | `null` |
+
+---
+
+## 推送配置
+
+### 通用 Webhook
+
+支持任意兼容的 Webhook 端点：
+
+1. 在菜单栏点击「测试推送」
+2. 输入你的 Webhook URL
+3. 保存并测试
+
+消息格式：
+
+```json
+{
+  "event": "status_changed",
+  "timestamp": "2026-03-28T01:30:00+08:00",
+  "source": "AlwaysOn",
+  "data": {
+    "status": "运行中",
+    "previous_status": "待机",
+    "wifi": "家里5G",
+    "power": "电源适配器",
+    "lid": "合上",
+    "mode": "白名单模式"
+  }
+}
+```
+
+---
+
+## 菜单栏
+
+```
+☕ 78%
+├── 状态: 运行中
+├── ──────────────
+├── WiFi: 家里5G
+├── 电源: 电源适配器
+├── 盖子: 打开
+├── 模式: 白名单模式
+├── ──────────────
+├── 添加 "家里5G" 到白名单
+├── ✓ 开机启动
+├── ──────────────
+├── 打开配置文件夹
+├── 测试推送
+├── ──────────────
+└── 退出
+```
+
+---
+
+## 权限说明
+
+AlwaysOn 需要以下权限：
+
+### 1. pmset 权限（必需）
+首次启动时需要输入密码授权，用于控制系统休眠。
+- 创建 `/etc/sudoers.d/pmset` 文件
+- 仅允许免密执行 `pmset` 命令，不影响其他命令
+
+### 2. 位置服务权限（可选，用于 WiFi 白名单）
+- 用于获取当前连接的 WiFi 名称（SSID）
+- macOS 位置服务隐私设置中授权
+- 不获取实际位置信息，仅用于 WiFi 名称识别
+
+---
+
 ## 卸载
 
-1. 菜单栏点击 **Disable** → **Quit**（自动恢复电源默认设置）
+1. 菜单栏点击 **退出**（自动恢复电源默认设置）
 2. 删除应用程序中的 AlwaysOn.app
-3. 可选：`sudo rm /etc/sudoers.d/pmset`
+3. 可选：`rm -rf ~/.alwayson`
+4. 可选：`sudo rm /etc/sudoers.d/pmset`
+
+---
+
+## 技术规格
+
+| | |
+|:--|:--|
+| **语言** | Pure Swift |
+| **二进制** | 83KB, Universal (arm64 + x86_64) |
+| **框架** | AppKit, IOKit, ServiceManagement |
+| **休眠控制** | `pmset disablesleep` + `caffeinate -ims` |
+| **权限** | `/etc/sudoers.d/pmset` (仅 pmset 免密) |
+| **登录项** | SMAppService (macOS 13+) |
+| **签名** | Ad-hoc codesigned |
+| **最低系统** | macOS 13.0 (Ventura) |
+
+---
 
 ## 常见问题
 
@@ -198,11 +221,34 @@ open AlwaysOn.app
 </details>
 
 <details>
-<summary><b>强制退出后怎么恢复？</b></summary>
+<summary><b>测试推送失败怎么办？</b></summary>
 <br>
-终端执行 <code>sudo pmset -a disablesleep 0</code>，或重新打开 App 点击 Disable。
+1. 检查网络连接<br>
+2. 确认 Webhook URL 正确<br>
+3. 查看弹窗显示的 HTTP 状态码：<br>
+   - <code>200-299</code>: 成功<br>
+   - <code>404</code>: 路径不存在或 URL 错误<br>
+   - <code>500</code>: 服务端错误<br>
+4. 检查弹窗中的响应内容获取详细信息
 </details>
+
+<details>
+<summary><b>白名单 WiFi 不生效？</b></summary>
+<br>
+1. 确保已授予 Location Services 权限（获取 WiFi 名称需要）<br>
+2. 检查 WiFi 名称是否完全匹配（区分大小写）<br>
+3. 打开配置文件夹查看日志输出<br>
+4. 尝试重启应用
+</details>
+
+---
 
 ## 许可证
 
 MIT
+
+---
+
+<p align="center">
+  <sub>Made with ☕ by LobsterAI</sub>
+</p>

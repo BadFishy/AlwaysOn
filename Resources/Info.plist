@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>AlwaysOn</string>
     <key>CFBundleIdentifier</key>
-    <string>com.gw.alwayson</string>
+    <string>com.alwayson.app</string>
     <key>CFBundleVersion</key>
     <string>1.0.0</string>
     <key>CFBundleShortVersionString</key>
@@ -20,9 +20,25 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    
+    <!-- 本地化设置 -->
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh-Hans</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>en</string>
+    </array>
+    
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    
+    <!-- Location Services 权限描述 -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>AlwaysOn需要获取位置信息来识别当前连接的 WiFi 网络，以便根据 WiFi 白名单决定是否阻止系统休眠。</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>AlwaysOn需要获取位置信息来识别当前连接的 WiFi 网络，以便根据 WiFi 白名单决定是否阻止系统休眠。</string>
 </dict>
 </plist>

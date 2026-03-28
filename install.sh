@@ -13,15 +13,40 @@ fi
 
 echo "Installing $APP_NAME to $INSTALL_DIR..."
 
-# Kill running instance if any
 pkill -x "$APP_NAME" 2>/dev/null || true
 sleep 1
 
-# Copy to /Applications
 rm -rf "$INSTALL_DIR/$APP_NAME.app"
 cp -R "$APP_BUNDLE" "$INSTALL_DIR/"
 
 echo "Installed to $INSTALL_DIR/$APP_NAME.app"
+
 echo ""
-echo "Launch with:"
-echo "  open /Applications/$APP_NAME.app"
+echo "Setting up configuration..."
+CONFIG_DIR="$HOME/.alwayson"
+mkdir -p "$CONFIG_DIR"
+
+if [ ! -f "$CONFIG_DIR/config.json" ]; then
+    cat > "$CONFIG_DIR/config.json" << 'EOF'
+{
+  "whitelist_wifi": [],
+  "check_interval": 60,
+  "enable_wake_on_power": true,
+  "webhook_enabled": false,
+  "webhook_url": null
+}
+EOF
+    echo "Created default config at $CONFIG_DIR/config.json"
+    echo "Edit this file to add trusted WiFi networks and webhook settings."
+else
+    echo "Config already exists at $CONFIG_DIR/config.json"
+    echo ""
+    echo "Hint: AlwaysOn supports webhook notifications."
+    echo "To enable, add to config:"
+    echo '  "webhook_enabled": true,'
+    echo '  "webhook_url": "https://your-webhook-url.com"'
+fi
+
+echo ""
+echo "To launch:"
+echo "  open \"/Applications/$APP_NAME.app\""
