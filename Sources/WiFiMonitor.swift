@@ -4,90 +4,81 @@ import CoreLocation
 import OSLog
 
 /// WiFi 检测管理器
-/// 使用 CoreWLAN + CoreLocation 获取 WiFi SSID
 final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
     private var client: CWWiFiClient?
     private var locationManager: CLLocationManager?
     
     private var lastKnownSSID: String?
     private var lastCheckTime: Date = .distantPast
-    private let cacheTimeout: TimeInterval = 3.0
+    private let cacheTimeout: TimeInterval = 5.0
     private let logger = Logger(subsystem: "com.alwayson.app", category: "WiFiMonitor")
     
-    /// 位置权限已请求（防止重复请求）
-    private var locationPermissionRequested = false
-    
     /// 最后一次错误，用于外部检测错误
-    var lastError: Error?
+    private(set) var lastError: Error?
     
-    /// 权限状态变化回调
+    /// 权限状态回调
+    var onPermissionStatusChanged: ((Bool) -> Void)?
+    
+    /// 权限授予回调（简化版，仅在授权成功时触发）
     var onPermissionGranted: (() -> Void)?
     
-    /// 获取当前 WiFi SSID
-    /// 需要 Location Services 权限才能获取 SSID
+    /// 同步获取当前 WiFi SSID
+    /// 直接调用 CoreWLAN（本地 API，不阻塞网络）
+    /// 权限已授予时总是返回实时值，未授予时返回缓存值
     var currentSSID: String? {
+        // 先检查缓存
         let now = Date()
-        
-        // 检查缓存
         if now.timeIntervalSince(lastCheckTime) < cacheTimeout, let cached = lastKnownSSID {
-            logger.info("✅ 使用缓存获取到 SSID: \(cached)")
             return cached
         }
         
-        // 检查 Location 权限
-        guard let locationManager = locationManager else {
-            return nil
-        }
-        
-        let status = locationManager.authorizationStatus
-        
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            break // 权限已授予，继续获取 SSID
-            
-        case .notDetermined:
-            // 非阻塞：请求权限，不等待结果
-            if !locationPermissionRequested {
-                locationPermissionRequested = true
-                logger.info("Location 权限未确定，开始请求...")
-                locationManager.requestWhenInUseAuthorization()
-            }
-            return nil
-            
-        case .denied, .restricted:
-            logger.warning("⚠️ 没有 Location 权限，无法获取 WiFi SSID")
-            lastError = WiFiMonitorError.locationPermissionDenied
-            return nil
-            
-        @unknown default:
-            return nil
-        }
-        
-        // 使用 CoreWLAN 获取 SSID
+        // 直接从 CoreWLAN 同步获取
         guard let interface = client?.interface() else {
-            logger.warning("CoreWLAN: 无法获取 WiFi 接口")
+            logger.warning("CoreWLAN: Cannot get WiFi interface")
             lastError = WiFiMonitorError.interfaceNotAvailable
             return nil
         }
         
-        // 检查 WiFi 是否开启
         guard interface.powerOn() else {
-            logger.warning("CoreWLAN: WiFi 电源关闭")
+            logger.warning("CoreWLAN: WiFi powered off")
             lastError = WiFiMonitorError.wifiPoweredOff
+            lastKnownSSID = nil
             return nil
         }
         
-        // 获取 SSID
         if let ssid = interface.ssid() {
             lastKnownSSID = ssid
-            lastCheckTime = now
+            lastCheckTime = Date()
             lastError = nil
-            logger.info("✅ CoreWLAN 成功获取到 SSID: \(ssid)")
+            logger.info("CoreWLAN got SSID: \(ssid)")
             return ssid
         } else {
-            logger.warning("⚠️ CoreWLAN: interface.ssid() 返回 nil（可能需要 Location 权限）")
+            logger.debug("CoreWLAN: interface.ssid() returned nil (no location permission or not connected)")
             lastError = WiFiMonitorError.ssidNotAvailable
+            lastKnownSSID = nil
             return nil
+        }
+    }
+    
+    /// 异步获取当前 WiFi SSID（带权限请求）
+    func getCurrentSSID(completion: @escaping (String?) -> Void) {
+        // 检查 Location 权限
+        checkLocationPermission { [weak self] granted in
+            guard let self = self else {
+                completion(nil)
+                return
+            }
+            
+            guard granted else {
+                self.logger.warning("Location permission denied")
+                self.lastError = WiFiMonitorError.locationPermissionDenied
+                completion(nil)
+                return
+            }
+            
+            // 权限已授予，清除缓存强制重新获取
+            self.lastCheckTime = .distantPast
+            completion(self.currentSSID)
         }
     }
     
@@ -98,10 +89,19 @@ final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
     
     /// 强制刷新，清除缓存
     func forceRefresh() {
-        logger.info("🔄 强制刷新 WiFi 状态")
         lastKnownSSID = nil
         lastCheckTime = .distantPast
-        _ = currentSSID
+    }
+    
+    /// 请求位置权限（首次使用时调用）
+    func requestPermissionIfNeeded() {
+        guard let locationManager = locationManager else { return }
+        
+        let status = locationManager.authorizationStatus
+        if status == .notDetermined {
+            logger.info("Requesting location permission for WiFi SSID detection...")
+            locationManager.requestWhenInUseAuthorization()
+        }
     }
     
     override init() {
@@ -109,52 +109,74 @@ final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
         client = CWWiFiClient.shared()
         locationManager = CLLocationManager()
         locationManager?.delegate = self
-        logger.info("WiFiMonitor 初始化完成")
+        logger.info("WiFiMonitor initialized")
     }
     
-    // MARK: - CLLocationManagerDelegate
+    // MARK: - 私有方法
     
-    /// 授权状态变化回调
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        let statusString = String(describing: status)
-        logger.info("Location 授权状态变化: \(statusString)")
+    /// 检查 Location 权限
+    private func checkLocationPermission(completion: @escaping (Bool) -> Void) {
+        guard let locationManager = locationManager else {
+            completion(false)
+            return
+        }
+        
+        let status = locationManager.authorizationStatus
         
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
-            // 权限已授予，清除缓存并通知外部
-            lastKnownSSID = nil
-            lastCheckTime = .distantPast
-            onPermissionGranted?()
+            completion(true)
+            
+        case .notDetermined:
+            logger.info("Location permission not determined, requesting...")
+            requestLocationPermission(completion: completion)
             
         case .denied, .restricted:
-            logger.warning("Location 权限被拒绝")
+            logger.warning("Location permission denied or restricted")
+            completion(false)
             
-        default:
-            break
+        @unknown default:
+            logger.error("Unknown location authorization status")
+            completion(false)
         }
     }
     
-    // MARK: - 辅助功能
-    
-    /// 获取当前 WiFi 的详细信息
-    func getCurrentWiFiInfo() -> WiFiInfo? {
-        guard let interface = client?.interface(),
-              let ssid = currentSSID else {
-            logger.warning("无法获取 WiFi 详细信息: 未连接或无权限")
-            return nil
+    /// 请求 Location 权限
+    private func requestLocationPermission(completion: @escaping (Bool) -> Void) {
+        guard let locationManager = locationManager else {
+            completion(false)
+            return
         }
         
-        let info = WiFiInfo(
-            ssid: ssid,
-            bssid: interface.bssid(),
-            rssi: interface.rssiValue(),
-            transmitRate: interface.transmitRate(),
-            channel: interface.wlanChannel()?.channelNumber,
-            noise: interface.noiseMeasurement()
-        )
+        permissionCallback = completion
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    private var permissionCallback: ((Bool) -> Void)?
+    
+    /// CLLocationManagerDelegate - 授权状态变化
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        logger.info("Location authorization status changed: \(String(describing: status))")
         
-        logger.info("📶 WiFi 信息: SSID=\(info.ssid), RSSI=\(info.rssi ?? 0)dBm, 速率=\(info.transmitRate ?? 0)Mbps")
-        return info
+        let granted: Bool
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            granted = true
+        case .denied, .restricted, .notDetermined:
+            granted = false
+        @unknown default:
+            granted = false
+        }
+        
+        // 回调并清理
+        permissionCallback?(granted)
+        permissionCallback = nil
+        
+        // 通知外部
+        onPermissionStatusChanged?(granted)
+        if granted {
+            onPermissionGranted?()
+        }
     }
 }
 

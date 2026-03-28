@@ -1,30 +1,62 @@
 import Foundation
 
+/// 配置管理器 - 线程安全版本
 final class ConfigManager {
     static let shared = ConfigManager()
     
+    // MARK: - 线程安全锁
+    private let lock = NSLock()
+    
+    // MARK: - 配置存储（必须通过锁访问）
+    private var _config: Config = Config()
+    private var config: Config {
+        get { lock.withLock { _config } }
+        set { lock.withLock { _config = newValue } }
+    }
+    
+    // MARK: - 文件路径
     private let configDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".alwayson")
     private let configFile: URL
     
-    private var config: Config = Config()
+    // MARK: - 公开属性（线程安全）
     
     var whitelistWiFi: [String] {
-        return config.whitelist_wifi
+        return lock.withLock { _config.whitelist_wifi }
     }
     
     var checkInterval: TimeInterval {
-        return TimeInterval(config.check_interval)
+        let interval = lock.withLock { _config.check_interval }
+        return TimeInterval(max(1, min(interval, 300)))
     }
     
     var enableWakeOnPower: Bool {
-        return config.enable_wake_on_power
+        return lock.withLock { _config.enable_wake_on_power }
     }
     
-    init() {
+    /// 手动开关：是否启用阻止休眠功能
+    var enabled: Bool {
+        return lock.withLock { _config.enabled }
+    }
+    
+    /// AC 模式："always"（插电即不休眠）或 "wifi_required"（插电+WiFi）
+    var acMode: String {
+        return lock.withLock { _config.ac_mode }
+    }
+    
+    /// 电池模式："whitelist"（仅白名单WiFi）或 "any_wifi"（有WiFi即可）
+    var batteryMode: String {
+        return lock.withLock { _config.battery_mode }
+    }
+    
+    // MARK: - 初始化
+    
+    private init() {
         configFile = configDirectory.appendingPathComponent("config.json")
         loadConfig()
     }
+    
+    // MARK: - 配置加载
     
     func loadConfig() {
         guard FileManager.default.fileExists(atPath: configFile.path) else {
@@ -35,58 +67,107 @@ final class ConfigManager {
         do {
             let data = try Data(contentsOf: configFile)
             let decoder = JSONDecoder()
-            config = try decoder.decode(Config.self, from: data)
-            print("[AlwaysOn] Config loaded: \(config.whitelist_wifi.count) WiFi(s) in whitelist")
+            let loadedConfig = try decoder.decode(Config.self, from: data)
+            
+            // 验证配置值
+            var validatedConfig = loadedConfig
+            validatedConfig.check_interval = max(1, min(loadedConfig.check_interval, 300))
+            
+            // 验证 ac_mode 和 battery_mode 的值
+            if !["always", "wifi_required"].contains(validatedConfig.ac_mode) {
+                validatedConfig.ac_mode = "always"
+            }
+            if !["whitelist", "any_wifi"].contains(validatedConfig.battery_mode) {
+                validatedConfig.battery_mode = "whitelist"
+            }
+            
+            lock.withLock {
+                _config = validatedConfig
+            }
+            
+            print("[AlwaysOn] Config loaded: \(whitelistWiFi.count) WiFi(s) in whitelist, enabled=\(enabled), ac_mode=\(acMode), battery_mode=\(batteryMode)")
         } catch {
             print("[AlwaysOn] Failed to load config: \(error). Using defaults.")
-            config = Config()
+            lock.withLock {
+                _config = Config()
+            }
         }
     }
+    
+    // MARK: - 白名单操作（线程安全）
     
     func isWhitelisted(_ ssid: String?) -> Bool {
-        guard let ssid = ssid else { return false }
-        return config.whitelist_wifi.contains(ssid)
+        guard let ssid = ssid, !ssid.isEmpty else { return false }
+        return lock.withLock { _config.whitelist_wifi.contains(ssid) }
     }
     
-    func addToWhitelist(_ ssid: String) {
-        if !config.whitelist_wifi.contains(ssid) {
-            config.whitelist_wifi.append(ssid)
-            saveConfig()
-            print("[AlwaysOn] Added '\(ssid)' to whitelist")
+    @discardableResult
+    func addToWhitelist(_ ssid: String) -> Bool {
+        let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSSID.isEmpty else { return false }
+        
+        lock.lock()
+        guard !_config.whitelist_wifi.contains(trimmedSSID) else {
+            lock.unlock()
+            return false
         }
+        _config.whitelist_wifi.append(trimmedSSID)
+        lock.unlock()
+        
+        saveConfig()
+        print("[AlwaysOn] Added '\(trimmedSSID)' to whitelist")
+        return true
     }
     
     func removeFromWhitelist(_ ssid: String) {
-        config.whitelist_wifi.removeAll { $0 == ssid }
+        lock.lock()
+        _config.whitelist_wifi.removeAll { $0 == ssid }
+        lock.unlock()
+        
         saveConfig()
         print("[AlwaysOn] Removed '\(ssid)' from whitelist")
     }
     
-    private func createDefaultConfig() {
-        config = Config()
+    // MARK: - 设置操作
+    
+    func setEnabled(_ value: Bool) {
+        lock.lock()
+        _config.enabled = value
+        lock.unlock()
+        
         saveConfig()
+        print("[AlwaysOn] Enabled set to \(value)")
+    }
+    
+    func setAcMode(_ mode: String) {
+        guard ["always", "wifi_required"].contains(mode) else { return }
         
-        let readmeFile = configDirectory.appendingPathComponent("README.txt")
-        let readmeContent = """
-        AlwaysOn 配置说明
-        =================
+        lock.lock()
+        _config.ac_mode = mode
+        lock.unlock()
         
-        编辑 config.json 添加受信任的 WiFi 网络。
+        saveConfig()
+        print("[AlwaysOn] AC mode set to \(mode)")
+    }
+    
+    func setBatteryMode(_ mode: String) {
+        guard ["whitelist", "any_wifi"].contains(mode) else { return }
         
-        配置示例:
-        {
-          "whitelist_wifi": ["家里WiFi", "公司5G"],
-          "check_interval": 60,
-          "enable_wake_on_power": true
+        lock.lock()
+        _config.battery_mode = mode
+        lock.unlock()
+        
+        saveConfig()
+        print("[AlwaysOn] Battery mode set to \(mode)")
+    }
+    
+    // MARK: - 配置持久化
+    
+    private func createDefaultConfig() {
+        lock.withLock {
+            _config = Config()
         }
-        
-        字段说明:
-        - whitelist_wifi: 白名单 WiFi 列表
-        - check_interval: 检测间隔（秒），默认 60 秒
-        - enable_wake_on_power: 休眠时插入电源是否自动唤醒
-        """
-        
-        try? readmeContent.write(to: readmeFile, atomically: true, encoding: .utf8)
+        saveConfig()
     }
     
     func saveConfig() {
@@ -99,7 +180,11 @@ final class ConfigManager {
             
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(config)
+            
+            lock.lock()
+            let data = try encoder.encode(_config)
+            lock.unlock()
+            
             try data.write(to: configFile)
         } catch {
             print("[AlwaysOn] Failed to save config: \(error)")
@@ -107,14 +192,32 @@ final class ConfigManager {
     }
 }
 
+// MARK: - NSLock 扩展
+
+extension NSLock {
+    func withLock<T>(_ block: () -> T) -> T {
+        lock()
+        defer { unlock() }
+        return block()
+    }
+}
+
+// MARK: - 数据模型
+
 struct Config: Codable {
     var whitelist_wifi: [String]
     var check_interval: Int
     var enable_wake_on_power: Bool
+    var enabled: Bool
+    var ac_mode: String
+    var battery_mode: String
     
     init() {
         self.whitelist_wifi = []
         self.check_interval = 60
         self.enable_wake_on_power = true
+        self.enabled = true
+        self.ac_mode = "always"
+        self.battery_mode = "whitelist"
     }
 }

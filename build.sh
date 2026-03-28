@@ -36,6 +36,8 @@ for ARCH in arm64 x86_64; do
         -framework IOKit \
         -framework ServiceManagement \
         -framework UserNotifications \
+        -framework CoreWLAN \
+        -framework CoreLocation \
         -O \
         "$SCRIPT_DIR/Sources/"*.swift
 done
@@ -47,8 +49,10 @@ lipo -create \
     -output "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 rm -rf "$TMPDIR_BUILD"
 
-# Ad-hoc code sign (required for SMAppService)
-codesign -s - --force --deep "$APP_BUNDLE"
+# Ad-hoc code sign with entitlements (required for SMAppService + Location)
+codesign -s - --force --deep \
+    --entitlements "$SCRIPT_DIR/Resources/AlwaysOn.entitlements" \
+    "$APP_BUNDLE"
 
 echo ""
 echo "Build successful: $APP_BUNDLE"

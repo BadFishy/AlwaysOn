@@ -5,29 +5,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let conditionalController = ConditionalSleepController()
     private let loginItemManager = LoginItemManager()
-    private let powerManager = PowerManager()
     
+    // Menu items
     private var statusMenuItem: NSMenuItem!
-    private var toggleMenuItem: NSMenuItem!
-    private var wifiMenuItem: NSMenuItem!
+    private var toggleEnableMenuItem: NSMenuItem!
     private var powerMenuItem: NSMenuItem!
     private var lidMenuItem: NSMenuItem!
-    private var modeMenuItem: NSMenuItem!
+    private var wifiMenuItem: NSMenuItem!
     private var whitelistMenuItem: NSMenuItem!
-    private var separator1: NSMenuItem!
-    private var separator2: NSMenuItem!
+    private var acModeAlwaysItem: NSMenuItem!
+    private var acModeWifiItem: NSMenuItem!
+    private var batteryModeWhitelistItem: NSMenuItem!
+    private var batteryModeAnyWifiItem: NSMenuItem!
     private var loginMenuItem: NSMenuItem!
-    private var isEnabled: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
+        // 加载配置
         ConfigManager.shared.loadConfig()
 
+        // 先设置菜单栏，确保 UI 不被阻塞
         setupStatusItem()
         setupConditionalController()
         updateMenuState()
         
+        // 异步检查权限，不阻塞 UI
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
@@ -41,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
             }
             
+            // 权限检查通过后，刷新状态
             DispatchQueue.main.async {
                 self.updateMenuState()
             }
@@ -57,85 +61,120 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.terminate(nil)
     }
 
+    // MARK: - Status Bar
+
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "cup.and.saucer", accessibilityDescription: NSLocalizedString("app_name", comment: ""))
+        button.image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "AlwaysOn")
         button.imagePosition = .imageLeading
-        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         
+        // 允许菜单栏图标被移除
         statusItem.behavior = .removalAllowed
 
         let menu = NSMenu()
 
-        statusMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_status", comment: ""), "--"), action: nil, keyEquivalent: "")
+        // 状态行
+        statusMenuItem = NSMenuItem(title: "...", action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
         
-        toggleMenuItem = NSMenuItem(title: NSLocalizedString("menu_enable", comment: ""), action: #selector(toggleAlwaysOn), keyEquivalent: "")
-        toggleMenuItem.target = self
-        menu.addItem(toggleMenuItem)
+        // 关闭/启用阻止休眠
+        toggleEnableMenuItem = NSMenuItem(title: NSLocalizedString("menu_disable_sleep_prevention", comment: ""), action: #selector(toggleEnable), keyEquivalent: "")
+        toggleEnableMenuItem.target = self
+        menu.addItem(toggleEnableMenuItem)
         
-        separator1 = NSMenuItem.separator()
-        menu.addItem(separator1)
+        menu.addItem(NSMenuItem.separator())
         
-        wifiMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_wifi", comment: ""), "--"), action: nil, keyEquivalent: "")
-        wifiMenuItem.isEnabled = false
-        menu.addItem(wifiMenuItem)
-        
+        // 电源状态
         powerMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_power", comment: ""), "--"), action: nil, keyEquivalent: "")
         powerMenuItem.isEnabled = false
         menu.addItem(powerMenuItem)
         
+        // 盖子状态
         lidMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_lid", comment: ""), "--"), action: nil, keyEquivalent: "")
         lidMenuItem.isEnabled = false
         menu.addItem(lidMenuItem)
         
-        modeMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_mode", comment: ""), "--"), action: nil, keyEquivalent: "")
-        modeMenuItem.isEnabled = false
-        menu.addItem(modeMenuItem)
+        menu.addItem(NSMenuItem.separator())
         
-        separator2 = NSMenuItem.separator()
-        menu.addItem(separator2)
+        // WiFi 信息
+        wifiMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_wifi", comment: ""), "--"), action: nil, keyEquivalent: "")
+        wifiMenuItem.isEnabled = false
+        menu.addItem(wifiMenuItem)
         
+        // 白名单操作
         whitelistMenuItem = NSMenuItem(title: NSLocalizedString("menu_add_whitelist_no_wifi", comment: ""), action: #selector(toggleWhitelist), keyEquivalent: "")
         whitelistMenuItem.target = self
         menu.addItem(whitelistMenuItem)
 
+        menu.addItem(NSMenuItem.separator())
+        
+        // AC 模式选项
+        acModeAlwaysItem = NSMenuItem(title: NSLocalizedString("menu_ac_mode_always", comment: ""), action: #selector(setAcModeAlways), keyEquivalent: "")
+        acModeAlwaysItem.target = self
+        menu.addItem(acModeAlwaysItem)
+        
+        acModeWifiItem = NSMenuItem(title: NSLocalizedString("menu_ac_mode_wifi", comment: ""), action: #selector(setAcModeWifi), keyEquivalent: "")
+        acModeWifiItem.target = self
+        menu.addItem(acModeWifiItem)
+        
+        // 电池模式选项
+        batteryModeWhitelistItem = NSMenuItem(title: NSLocalizedString("menu_battery_mode_whitelist", comment: ""), action: #selector(setBatteryModeWhitelist), keyEquivalent: "")
+        batteryModeWhitelistItem.target = self
+        menu.addItem(batteryModeWhitelistItem)
+        
+        batteryModeAnyWifiItem = NSMenuItem(title: NSLocalizedString("menu_battery_mode_any_wifi", comment: ""), action: #selector(setBatteryModeAnyWifi), keyEquivalent: "")
+        batteryModeAnyWifiItem.target = self
+        menu.addItem(batteryModeAnyWifiItem)
+
+        menu.addItem(NSMenuItem.separator())
+        
+        // 开机自启
         loginMenuItem = NSMenuItem(title: NSLocalizedString("menu_launch_at_login", comment: ""), action: #selector(toggleLoginItem), keyEquivalent: "")
         loginMenuItem.target = self
         menu.addItem(loginMenuItem)
         
+        // 打开配置文件夹
         let configItem = NSMenuItem(title: NSLocalizedString("menu_open_config_folder", comment: ""), action: #selector(openConfigFolder), keyEquivalent: "")
         configItem.target = self
         menu.addItem(configItem)
 
         menu.addItem(NSMenuItem.separator())
 
+        // 退出
         let quitItem = NSMenuItem(title: NSLocalizedString("menu_quit", comment: ""), action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
         statusItem.menu = menu
         
+        // 设置菜单委托以便在菜单打开时刷新状态
         menu.delegate = self
     }
     
+    // MARK: - NSMenuDelegate
+    
     func menuWillOpen(_ menu: NSMenu) {
+        // 菜单即将打开时，强制刷新 WiFi 状态并更新菜单
         conditionalController.wifiMonitor.forceRefresh()
         updateMenuState()
     }
     
+    // MARK: - Conditional Controller
+
     private func setupConditionalController() {
-        conditionalController.onStatusChange = { [weak self] _ in
+        conditionalController.onStatusChange = { [weak self] in
             DispatchQueue.main.async {
                 self?.updateMenuState()
             }
         }
         
+        // 位置权限授予后立即重新检测条件并刷新菜单
         conditionalController.wifiMonitor.onPermissionGranted = { [weak self] in
             DispatchQueue.main.async {
+                self?.conditionalController.checkConditions()
                 self?.updateMenuState()
             }
         }
@@ -143,55 +182,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         conditionalController.start()
     }
 
+    // MARK: - State Management
+
     private func updateMenuState() {
-        let (_, detail) = conditionalController.getStatusDescription()
-        let wifiSSID = conditionalController.wifiMonitor.currentSSID ?? NSLocalizedString("wifi_not_connected", comment: "")
-        let info = conditionalController.batteryMonitor.currentInfo()
-        let lidClosed = isLidClosed()
-        
-        if lidClosed {
-            let status = conditionalController.currentStatus == .inactive ? "待机" : "运行中"
-            statusMenuItem.title = String(format: NSLocalizedString("menu_status", comment: ""), localizeStatus(status))
-        } else {
-            let ssid = conditionalController.wifiMonitor.currentSSID
-            let isWhitelisted = ConfigManager.shared.isWhitelisted(ssid)
-            let willStayAwake = (info.isOnAC && ssid != nil) || isWhitelisted
-            let prediction = willStayAwake
-                ? NSLocalizedString("lid_prediction_wake", comment: "")
-                : NSLocalizedString("lid_prediction_sleep", comment: "")
-            statusMenuItem.title = String(format: NSLocalizedString("lid_prediction", comment: ""), prediction)
-        }
-        
-        wifiMenuItem.title = String(format: NSLocalizedString("menu_wifi", comment: ""), wifiSSID)
-        powerMenuItem.title = String(format: NSLocalizedString("menu_power", comment: ""), info.isOnAC ? NSLocalizedString("menu_power_ac", comment: "") : NSLocalizedString("menu_power_battery", comment: ""))
-        lidMenuItem.title = String(format: NSLocalizedString("menu_lid", comment: ""), lidClosed ? NSLocalizedString("menu_lid_closed", comment: "") : NSLocalizedString("menu_lid_open", comment: ""))
-        modeMenuItem.title = String(format: NSLocalizedString("menu_mode", comment: ""), localizeMode(detail))
-        
-        isEnabled = powerManager.isEnabled
-        toggleMenuItem.title = isEnabled ? NSLocalizedString("menu_disable", comment: "") : NSLocalizedString("menu_enable", comment: "")
-        
-        guard let button = statusItem.button else { return }
-        
-        let ssid = conditionalController.wifiMonitor.currentSSID
-        let isWhitelisted = ConfigManager.shared.isWhitelisted(ssid)
-        let willStayAwake = (info.isOnAC && ssid != nil) || isWhitelisted
-        
-        if willStayAwake {
-            button.image = NSImage(
-                systemSymbolName: "cup.and.saucer.fill",
-                accessibilityDescription: "\(NSLocalizedString("app_name", comment: "")) \(NSLocalizedString("status_running", comment: ""))"
-            )
-        } else {
-            button.image = NSImage(
-                systemSymbolName: "moon.fill",
-                accessibilityDescription: "\(NSLocalizedString("app_name", comment: "")) \(NSLocalizedString("status_standby", comment: ""))"
-            )
-        }
-        button.title = ""
-        
         let config = ConfigManager.shared
-        let currentSSID = conditionalController.wifiMonitor.currentSSID
-        if let ssid = currentSSID {
+        let info = conditionalController.batteryMonitor.currentInfo()
+        let lidClosed = LidStateProvider.shared.isLidClosed()
+        let wifiSSID = conditionalController.wifiMonitor.currentSSID
+        
+        // 更新状态行 — 始终显示预测式文本
+        let prediction = conditionalController.predictedStatus()
+        switch prediction {
+        case .willStayAwake:
+            statusMenuItem.title = NSLocalizedString("status_will_stay_awake", comment: "")
+        case .willSleep:
+            statusMenuItem.title = NSLocalizedString("status_will_sleep", comment: "")
+        case .disabled:
+            statusMenuItem.title = NSLocalizedString("status_disabled", comment: "")
+        }
+        
+        // 更新开关菜单项
+        if config.enabled {
+            toggleEnableMenuItem.title = NSLocalizedString("menu_disable_sleep_prevention", comment: "")
+        } else {
+            toggleEnableMenuItem.title = NSLocalizedString("menu_enable_sleep_prevention", comment: "")
+        }
+        
+        // 更新电源和盖子状态
+        powerMenuItem.title = String(format: NSLocalizedString("menu_power", comment: ""), 
+            info.isOnAC ? NSLocalizedString("menu_power_ac", comment: "") : NSLocalizedString("menu_power_battery", comment: ""))
+        lidMenuItem.title = String(format: NSLocalizedString("menu_lid", comment: ""), 
+            lidClosed ? NSLocalizedString("menu_lid_closed", comment: "") : NSLocalizedString("menu_lid_open", comment: ""))
+        
+        // 更新 WiFi 信息
+        let wifiDisplay = wifiSSID ?? NSLocalizedString("wifi_not_connected", comment: "")
+        wifiMenuItem.title = String(format: NSLocalizedString("menu_wifi", comment: ""), wifiDisplay)
+        
+        // 更新白名单菜单项
+        if let ssid = wifiSSID {
             let isWhitelisted = config.isWhitelisted(ssid)
             whitelistMenuItem.title = String(format: isWhitelisted ? NSLocalizedString("menu_remove_from_whitelist", comment: "") : NSLocalizedString("menu_add_to_whitelist", comment: ""), ssid)
             whitelistMenuItem.isEnabled = true
@@ -200,70 +228,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             whitelistMenuItem.isEnabled = false
         }
         
+        // 更新 AC 模式选项
+        acModeAlwaysItem.state = config.acMode == "always" ? .on : .off
+        acModeWifiItem.state = config.acMode == "wifi_required" ? .on : .off
+        
+        // 更新电池模式选项
+        batteryModeWhitelistItem.state = config.batteryMode == "whitelist" ? .on : .off
+        batteryModeAnyWifiItem.state = config.batteryMode == "any_wifi" ? .on : .off
+        
+        // 更新菜单栏图标
+        guard let button = statusItem.button else { return }
+        
+        switch prediction {
+        case .willStayAwake:
+            button.image = NSImage(
+                systemSymbolName: "cup.and.saucer.fill",
+                accessibilityDescription: "AlwaysOn - \(NSLocalizedString("status_will_stay_awake", comment: ""))"
+            )
+        case .willSleep, .disabled:
+            button.image = NSImage(
+                systemSymbolName: "moon.zzz",
+                accessibilityDescription: "AlwaysOn - \(NSLocalizedString("status_will_sleep", comment: ""))"
+            )
+        }
+        
+        // 更新开机自启状态
         loginMenuItem.state = loginItemManager.isEnabled ? .on : .off
     }
-    
-    private func localizeStatus(_ status: String) -> String {
-        switch status {
-        case "运行中", "Running":
-            return NSLocalizedString("status_running", comment: "")
-        case "待机", "Standby":
-            return NSLocalizedString("status_standby", comment: "")
-        case "白名单模式", "Whitelist Mode":
-            return NSLocalizedString("status_whitelist_mode", comment: "")
-        case "电源模式", "AC Mode":
-            return NSLocalizedString("status_ac_mode", comment: "")
-        case "休眠中", "Sleeping":
-            return NSLocalizedString("status_sleeping", comment: "")
-        default:
-            return status
-        }
-    }
-    
-    private func localizeMode(_ mode: String) -> String {
-        if mode.contains("白名单") || mode.contains("Whitelist") {
-            return NSLocalizedString("menu_mode_whitelist", comment: "")
-        } else if mode.contains("电源") || mode.contains("AC") {
-            return NSLocalizedString("menu_mode_ac", comment: "")
-        } else if mode.contains("电池") || mode.contains("Battery") {
-            return NSLocalizedString("menu_mode_battery", comment: "")
-        } else if mode.contains("禁用") || mode.contains("Disabled") {
-            return NSLocalizedString("menu_mode_disabled", comment: "")
-        }
-        return mode
-    }
-    
-    private func isLidClosed() -> Bool {
-        let process = Process()
-        let pipe = Pipe()
-        
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/ioreg")
-        process.arguments = ["-r", "-k", "AppleClamshellState", "-d", "4"]
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
-            
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-            
-            return output.contains("\"AppleClamshellState\" = Yes")
-        } catch {
-            return false
-        }
-    }
 
-    @objc private func toggleAlwaysOn() {
-        if powerManager.isEnabled {
-            powerManager.disable()
-        } else {
-            powerManager.enable()
-        }
+    // MARK: - Actions
+
+    @objc private func toggleEnable() {
+        let config = ConfigManager.shared
+        let newEnabled = !config.enabled
+        config.setEnabled(newEnabled)
+        
+        // 立即触发条件检测
+        conditionalController.checkConditions()
         updateMenuState()
     }
     
+    @objc private func setAcModeAlways() {
+        ConfigManager.shared.setAcMode("always")
+        conditionalController.checkConditions()
+        updateMenuState()
+    }
+    
+    @objc private func setAcModeWifi() {
+        ConfigManager.shared.setAcMode("wifi_required")
+        conditionalController.checkConditions()
+        updateMenuState()
+    }
+    
+    @objc private func setBatteryModeWhitelist() {
+        ConfigManager.shared.setBatteryMode("whitelist")
+        conditionalController.checkConditions()
+        updateMenuState()
+    }
+    
+    @objc private func setBatteryModeAnyWifi() {
+        ConfigManager.shared.setBatteryMode("any_wifi")
+        conditionalController.checkConditions()
+        updateMenuState()
+    }
+
     @objc private func toggleLoginItem() {
         let newState = !loginItemManager.isEnabled
         loginItemManager.setEnabled(newState)
@@ -280,14 +308,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         
         if isWhitelisted {
             config.removeFromWhitelist(currentSSID)
-            showNotification(title: NSLocalizedString("notification_title", comment: ""), 
+            showNotification(title: "AlwaysOn", 
                            body: String(format: NSLocalizedString("notification_removed_from_whitelist", comment: ""), currentSSID))
         } else {
             config.addToWhitelist(currentSSID)
-            showNotification(title: NSLocalizedString("notification_title", comment: ""), 
+            showNotification(title: "AlwaysOn", 
                            body: String(format: NSLocalizedString("notification_added_to_whitelist", comment: ""), currentSSID))
         }
         
+        // 立即刷新状态
+        conditionalController.checkConditions()
         updateMenuState()
     }
     

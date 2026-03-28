@@ -5,211 +5,160 @@
 <h1 align="center">AlwaysOn</h1>
 
 <p align="center">
-  <strong>你的 Mac 永不休眠。</strong><br>
-  在 AI Agent 时代，让你的 Mac 永远在线。
+  <strong>Your Mac, always awake.</strong><br>
+  Keep your Mac running with the lid closed. Built for the AI Agent era.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-000?style=flat-square&logo=apple&logoColor=fff" alt="macOS 13+">
   <img src="https://img.shields.io/badge/arch-Universal%20Binary-000?style=flat-square" alt="Universal Binary">
-  <img src="https://img.shields.io/badge/size-83KB-000?style=flat-square" alt="83KB">
   <img src="https://img.shields.io/badge/language-Swift-000?style=flat-square&logo=swift&logoColor=F05138" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-000?style=flat-square" alt="MIT">
 </p>
 
 <p align="center">
-  <a href="https://github.com/mochimon/AlwaysOn/releases/latest/download/AlwaysOn.zip"><strong>下载</strong></a> · <a href="#安装">安装说明</a> · <a href="#配置">配置指南</a>
-</p>
-
-<p align="center">
-  <sub>支持所有 Mac：MacBook · Mac mini · iMac · Mac Studio · Mac Pro</sub>
+  <a href="#install">Install</a> · <a href="#configuration">Configuration</a> · <a href="#menu-bar">Menu Bar</a>
 </p>
 
 ---
 
-## 功能对比
+## Features
 
-| 功能 | 原版 AlwaysOn | AlwaysOn (增强版) |
-|:---|:---|:---|
-| 一键防休眠 | ✅ | ✅ |
-| 智能电池保护 | ✅ | ✅ |
-| 零配置权限 | ✅ | ✅ |
-| 原生菜单栏 | ✅ | ✅ |
-| **WiFi 白名单** | ❌ | ✅ 连接特定 WiFi 自动防休眠 |
-| **开盖检测** | ❌ | ✅ 自动检测笔记本盖子状态 |
-| **国际化支持** | ❌ | ✅ 中文/英文自动切换 |
-
----
-
-## 功能
-
-> **一键防休眠** — 完全禁用系统休眠，包括合盖。AI Agent、长时间编译、通宵下载不中断。
-
-> **WiFi 白名单** — 连接指定 WiFi 时自动启用防休眠，离开则自动恢复。支持"家里 WiFi"、"办公室"等场景。
-
-> **智能电池保护** — 每 60 秒检测电量。合盖 + ≤5% → 自动休眠。开盖 → 仅通知。10% 时警告。
-
-> **零配置权限** — 首次启动弹出 macOS 原生密码框，输入一次即永久免密。仅授权 `pmset`。
-
-> **原生菜单栏** — SF Symbols 图标 + 实时电量。开关切换，支持开机自启。无 Dock 图标。
+- **Clamshell sleep prevention** -- Uses `pmset disablesleep 1` to keep your Mac running with the lid closed. WiFi stays connected, processes keep running.
+- **AC mode** -- Choose "always awake on AC" (default) or "AC + WiFi required".
+- **Battery mode** -- Choose "whitelist WiFi only" (default) or "any WiFi".
+- **Manual toggle** -- Enable/disable sleep prevention from the menu bar. Persisted across restarts.
+- **WiFi whitelist** -- Add/remove WiFi networks from the menu bar. Whitelist WiFi keeps your Mac awake even on battery.
+- **Smart battery protection** -- Monitors battery every 60 seconds. Auto-sleeps at 5% with lid closed.
+- **Deep sleep prevention** -- Disables `standby` and `autopoweroff` when active, preventing the system from entering deep sleep.
+- **Launch at login** -- Uses SMAppService (macOS 13+).
+- **Native menu bar** -- SF Symbols icons, no Dock icon, no Electron.
+- **Bilingual** -- English and Simplified Chinese, auto-detected.
 
 ---
 
-## 安装
+## Install
 
-### 方式一：直接下载
+### Download
 
-```
-1. 下载 → 解压 → 拖入 /Applications
-2. 右键 → 打开（仅首次）
-3. 输入一次密码
-4. 点击启用 ☕ 搞定。
-```
+Download `AlwaysOn.zip`, unzip, and drag to `/Applications`. First launch: right-click -> Open.
 
-### 方式二：从源码构建
+### Build from source
 
 ```bash
-git clone https://github.com/mochimon/AlwaysOn.git
+git clone <repo-url>
 cd AlwaysOn
 ./build.sh
-open AlwaysOn.app
+./install.sh   # copies to /Applications
 ```
+
+Requires: macOS 13+, Xcode Command Line Tools (for `swiftc`).
 
 ---
 
-## 配置
+## Configuration
 
-编辑 `~/.alwayson/config.json`：
+Config file: `~/.alwayson/config.json`
 
 ```json
 {
-  "whitelist_wifi": ["家里5G", "办公室"],
+  "ac_mode": "always",
+  "battery_mode": "whitelist",
   "check_interval": 60,
-  "enable_wake_on_power": true
+  "enable_wake_on_power": true,
+  "enabled": true,
+  "whitelist_wifi": ["Home WiFi", "Office 5G"]
 }
 ```
 
-### 字段说明
-
-| 字段 | 说明 | 默认值 |
+| Field | Description | Default |
 |:---|:---|:---|
-| `whitelist_wifi` | 白名单 WiFi 列表，连接这些网络时自动防休眠 | `[]` |
-| `check_interval` | 检测间隔（秒） | `60` |
-| `enable_wake_on_power` | 插入电源时是否自动唤醒 | `true` |
+| `enabled` | Master switch for sleep prevention | `true` |
+| `ac_mode` | `"always"` (AC = always awake) or `"wifi_required"` (AC + WiFi) | `"always"` |
+| `battery_mode` | `"whitelist"` (whitelist WiFi only) or `"any_wifi"` (any WiFi) | `"whitelist"` |
+| `whitelist_wifi` | WiFi networks that keep your Mac awake on battery | `[]` |
+| `check_interval` | Check interval in seconds (1-300) | `60` |
+| `enable_wake_on_power` | Wake from sleep when power is connected | `true` |
 
 ---
 
-## 菜单栏
+## Menu Bar
 
 ```
-☕ 78%
-├── 状态: 运行中
+cup.and.saucer.fill / moon.zzz
+├── Will stay awake after lid close
+├── Disable Sleep Prevention
 ├── ──────────────
-├── WiFi: 家里5G
-├── 电源: 电源适配器
-├── 盖子: 打开
-├── 模式: 白名单模式
+├── Power: Power Adapter
+├── Lid: Open
 ├── ──────────────
-├── 添加 "家里5G" 到白名单
-├── ✓ 开机启动
+├── WiFi: Home WiFi
+├── Add "Home WiFi" to Whitelist
 ├── ──────────────
-├── 打开配置文件夹
+├── AC Mode: Always Awake        ✓
+├── AC Mode: WiFi Required
+├── Battery Mode: Whitelist WiFi Only  ✓
+├── Battery Mode: Any WiFi
 ├── ──────────────
-└── 退出
+├── ✓ Launch at Login
+├── Open Config Folder
+├── ──────────────
+└── Quit AlwaysOn (⌘Q)
 ```
 
----
-
-## 权限说明
-
-AlwaysOn 需要以下权限：
-
-### 1. pmset 权限（必需）
-首次启动时需要输入密码授权，用于控制系统休眠。
-- 创建 `/etc/sudoers.d/pmset` 文件
-- 仅允许免密执行 `pmset` 命令，不影响其他命令
-
-### 2. 位置服务权限（可选，用于 WiFi 白名单）
-- 用于获取当前连接的 WiFi 名称（SSID）
-- macOS 位置服务隐私设置中授权
-- 不获取实际位置信息，仅用于 WiFi 名称识别
+**Icons:**
+- Coffee cup (`cup.and.saucer.fill`) = will stay awake
+- Moon (`moon.zzz`) = will not stay awake
 
 ---
 
-## 卸载
+## How It Works
 
-1. 菜单栏点击 **退出**（自动恢复电源默认设置）
-2. 删除应用程序中的 AlwaysOn.app
-3. 可选：`rm -rf ~/.alwayson`
-4. 可选：`sudo rm /etc/sudoers.d/pmset`
+AlwaysOn uses `pmset disablesleep 1` as the sole mechanism to prevent sleep. This is the only reliable way to prevent macOS clamshell sleep.
+
+When active, it also sets:
+- `standby 0` and `autopoweroff 0` to prevent deep sleep
+- `disksleep 0` and `networkoversleep 1` to keep disk and network alive
+- `tcpkeepalive 1` to maintain network connections
+
+When disabled, all settings are restored to macOS defaults.
 
 ---
 
-## 技术规格
+## Permissions
+
+### pmset (required)
+First launch prompts for your password once. Creates `/etc/sudoers.d/pmset` allowing passwordless `pmset` only.
+
+### Location Services (optional, for WiFi whitelist)
+Required to read WiFi SSID. macOS requires Location Services permission for this. No actual location data is used.
+
+---
+
+## Uninstall
+
+1. Click **Quit** in the menu bar (restores default power settings)
+2. Delete `AlwaysOn.app` from `/Applications`
+3. Optional: `rm -rf ~/.alwayson`
+4. Optional: `sudo rm /etc/sudoers.d/pmset`
+
+---
+
+## Technical Specs
 
 | | |
 |:--|:--|
-| **语言** | Pure Swift |
-| **二进制** | 83KB, Universal (arm64 + x86_64) |
-| **框架** | AppKit, IOKit, ServiceManagement |
-| **休眠控制** | `pmset disablesleep` + `caffeinate -ims` |
-| **权限** | `/etc/sudoers.d/pmset` (仅 pmset 免密) |
-| **登录项** | SMAppService (macOS 13+) |
-| **签名** | Ad-hoc codesigned |
-| **最低系统** | macOS 13.0 (Ventura) |
+| **Language** | Pure Swift (swiftc, no Xcode project) |
+| **Binary** | Universal (arm64 + x86_64) |
+| **Frameworks** | AppKit, IOKit, ServiceManagement, CoreWLAN, CoreLocation |
+| **Sleep control** | `pmset disablesleep 1` |
+| **Privileges** | `/etc/sudoers.d/pmset` |
+| **Login item** | SMAppService (macOS 13+) |
+| **Signing** | Ad-hoc codesigned with entitlements |
+| **Minimum OS** | macOS 13.0 (Ventura) |
 
 ---
 
-## 常见问题
-
-<details>
-<summary><b>为什么打不开 App？</b></summary>
-<br>
-右键 → 打开 → 打开。仅需一次。<br><br>
-如果仍然无法打开：<b>系统设置 → 隐私与安全性 → 安全性</b>，点击<b>「仍要打开」</b>。
-</details>
-
-<details>
-<summary><b>密码弹窗做了什么？</b></summary>
-<br>
-创建 <code>/etc/sudoers.d/pmset</code>，仅允许免密执行 <code>pmset</code>，不影响其他命令。
-</details>
-
-<details>
-<summary><b>菜单栏看不到图标？</b></summary>
-<br>
-刘海屏 MacBook 上图标过多会被挤到摄像头后面。按住 <code>⌘</code> 拖拽重新排列，或使用 <a href="https://github.com/jordanbaird/Ice">Ice</a>（免费开源）管理菜单栏。
-</details>
-
-<details>
-<summary><b>测试推送失败怎么办？</b></summary>
-<br>
-1. 检查网络连接<br>
-2. 确认 Webhook URL 正确<br>
-3. 查看弹窗显示的 HTTP 状态码：<br>
-   - <code>200-299</code>: 成功<br>
-   - <code>404</code>: 路径不存在或 URL 错误<br>
-   - <code>500</code>: 服务端错误<br>
-4. 检查弹窗中的响应内容获取详细信息
-</details>
-
-<details>
-<summary><b>白名单 WiFi 不生效？</b></summary>
-<br>
-1. 确保已授予 Location Services 权限（获取 WiFi 名称需要）<br>
-2. 检查 WiFi 名称是否完全匹配（区分大小写）<br>
-3. 打开配置文件夹查看日志输出<br>
-4. 尝试重启应用
-</details>
-
----
-
-## 许可证
+## License
 
 MIT
-
----
-
-<p align="center">
-  <sub>Made with ☕ by LobsterAI</sub>
-</p>

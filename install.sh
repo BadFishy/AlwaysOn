@@ -29,9 +29,12 @@ mkdir -p "$CONFIG_DIR"
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
     cat > "$CONFIG_DIR/config.json" << 'EOF'
 {
-  "whitelist_wifi": [],
+  "ac_mode": "always",
+  "battery_mode": "whitelist",
   "check_interval": 60,
-  "enable_wake_on_power": true
+  "enable_wake_on_power": true,
+  "enabled": true,
+  "whitelist_wifi": []
 }
 EOF
     echo "Created default config at $CONFIG_DIR/config.json"

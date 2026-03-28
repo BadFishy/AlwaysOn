@@ -689,8 +689,8 @@ footer a:hover { color: var(--accent); }
       <span data-zh>让你的 Mac<br><span class="accent">永不休眠。</span></span>
     </h1>
     <p class="hero-sub reveal" style="transition-delay: 0.2s;">
-      <span data-en>In the age of AI agents, your Mac should run forever.<br>One click. No config. 83KB.</span>
-      <span data-zh>AI Agent 时代，你的 Mac 应该永远在线。<br>一键开启，零配置，仅 83KB。</span>
+      <span data-en>In the age of AI agents, your Mac should run forever.<br>WiFi whitelist. AC & battery modes. One click.</span>
+      <span data-zh>AI Agent 时代，你的 Mac 应该永远在线。<br>WiFi 白名单、插电/电池模式、一键开启。</span>
     </p>
     <div class="hero-actions reveal" style="transition-delay: 0.3s;">
       <a href="https://github.com/GGG-HHH/AlwaysOn/releases/latest/download/AlwaysOn.zip" class="btn-download">
@@ -831,15 +831,28 @@ footer a:hover { color: var(--accent); }
         </h2>
         <div class="reveal" style="transition-delay: 0.15s;">
           <div class="menu-preview">
-            <div class="menu-bar">⚡ 78%</div>
-            <div class="menu-item active">Disable AlwaysOn</div>
+            <div class="menu-bar">☕ AlwaysOn</div>
+            <div class="menu-item active">
+              <span data-en>Will stay awake after lid close</span>
+              <span data-zh>合盖后保持唤醒</span>
+            </div>
+            <div class="menu-item">
+              <span data-en>Disable Sleep Prevention</span>
+              <span data-zh>关闭阻止休眠</span>
+            </div>
             <div class="menu-sep"></div>
-            <div class="menu-item"><span>Battery</span><span class="meta">78%</span></div>
-            <div class="menu-item"><span>Power</span><span class="meta">Battery</span></div>
+            <div class="menu-item"><span data-en>Power: AC</span><span data-zh>电源：电源适配器</span></div>
+            <div class="menu-item"><span data-en>Lid: Open</span><span data-zh>盖子：打开</span></div>
             <div class="menu-sep"></div>
-            <div class="menu-item"><span><span class="menu-check">✓</span>Launch at Login</span></div>
+            <div class="menu-item"><span>WiFi: Home 5G</span></div>
+            <div class="menu-item"><span data-en>Add "Home 5G" to Whitelist</span><span data-zh>添加「Home 5G」到白名单</span></div>
             <div class="menu-sep"></div>
-            <div class="menu-item" style="color: var(--text-tertiary);">Quit</div>
+            <div class="menu-item"><span><span class="menu-check">✓</span><span data-en>AC Mode: Always Awake</span><span data-zh>插电模式：插电即不休眠</span></span></div>
+            <div class="menu-item"><span data-en>Battery Mode: Whitelist WiFi Only</span><span data-zh>电池模式：仅白名单WiFi</span></div>
+            <div class="menu-sep"></div>
+            <div class="menu-item"><span><span class="menu-check">✓</span><span data-en>Launch at Login</span><span data-zh>开机自启</span></span></div>
+            <div class="menu-sep"></div>
+            <div class="menu-item" style="color: var(--text-tertiary);"><span data-en>Quit AlwaysOn</span><span data-zh>退出 AlwaysOn</span></div>
           </div>
         </div>
       </div>
@@ -973,8 +986,8 @@ footer a:hover { color: var(--accent); }
       <div class="tech-tag"><span class="tag-dot"></span> Pure Swift</div>
       <div class="tech-tag"><span class="tag-dot"></span> swiftc</div>
       <div class="tech-tag"><span class="tag-dot"></span> Universal Binary</div>
-      <div class="tech-tag"><span class="tag-dot"></span> AppKit + IOKit</div>
-      <div class="tech-tag"><span class="tag-dot"></span> pmset + caffeinate</div>
+      <div class="tech-tag"><span class="tag-dot"></span> AppKit + IOKit + CoreWLAN</div>
+      <div class="tech-tag"><span class="tag-dot"></span> pmset disablesleep</div>
       <div class="tech-tag"><span class="tag-dot"></span> 83KB</div>
       <div class="tech-tag"><span class="tag-dot"></span> Ad-hoc codesigned</div>
       <div class="tech-tag"><span class="tag-dot"></span> macOS 13+</div>

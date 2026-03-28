@@ -2,7 +2,7 @@ import Foundation
 import ServiceManagement
 
 final class LoginItemManager {
-    private let launchAgentLabel = "com.gw.alwayson"
+    private let launchAgentLabel = "com.alwayson.app"
     private var launchAgentPath: String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return "\(home)/Library/LaunchAgents/\(launchAgentLabel).plist"
