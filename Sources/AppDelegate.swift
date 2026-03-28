@@ -5,8 +5,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let conditionalController = ConditionalSleepController()
     private let loginItemManager = LoginItemManager()
+    private let powerManager = PowerManager()
     
     private var statusMenuItem: NSMenuItem!
+    private var toggleMenuItem: NSMenuItem!
     private var wifiMenuItem: NSMenuItem!
     private var powerMenuItem: NSMenuItem!
     private var lidMenuItem: NSMenuItem!
@@ -15,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var separator1: NSMenuItem!
     private var separator2: NSMenuItem!
     private var loginMenuItem: NSMenuItem!
+    private var isEnabled: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
@@ -69,6 +72,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusMenuItem = NSMenuItem(title: String(format: NSLocalizedString("menu_status", comment: ""), "--"), action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
+        
+        toggleMenuItem = NSMenuItem(title: NSLocalizedString("menu_enable", comment: ""), action: #selector(toggleAlwaysOn), keyEquivalent: "")
+        toggleMenuItem.target = self
+        menu.addItem(toggleMenuItem)
         
         separator1 = NSMenuItem.separator()
         menu.addItem(separator1)
@@ -160,6 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lidMenuItem.title = String(format: NSLocalizedString("menu_lid", comment: ""), lidClosed ? NSLocalizedString("menu_lid_closed", comment: "") : NSLocalizedString("menu_lid_open", comment: ""))
         modeMenuItem.title = String(format: NSLocalizedString("menu_mode", comment: ""), localizeMode(detail))
         
+        isEnabled = powerManager.isEnabled
+        toggleMenuItem.title = isEnabled ? NSLocalizedString("menu_disable", comment: "") : NSLocalizedString("menu_enable", comment: "")
+        
         guard let button = statusItem.button else { return }
         
         let ssid = conditionalController.wifiMonitor.currentSSID
@@ -245,6 +255,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    @objc private func toggleAlwaysOn() {
+        if powerManager.isEnabled {
+            powerManager.disable()
+        } else {
+            powerManager.enable()
+        }
+        updateMenuState()
+    }
+    
     @objc private func toggleLoginItem() {
         let newState = !loginItemManager.isEnabled
         loginItemManager.setEnabled(newState)

@@ -111,11 +111,6 @@ final class ConditionalSleepController {
         let currentSSID = wifiMonitor.currentSSID
         let isWiFiConnected = currentSSID != nil
         let isWhitelisted = config.isWhitelisted(currentSSID)
-        let isClamshellClosed = isLidClosed()
-        
-        guard isClamshellClosed else {
-            return false
-        }
         
         let condition1 = info.isOnAC && isWiFiConnected
         let condition2 = isWhitelisted
@@ -129,7 +124,6 @@ final class ConditionalSleepController {
             print("  - SSID: \(currentSSID ?? "nil")")
             print("  - Is Whitelisted: \(isWhitelisted)")
             print("  - Is On AC: \(info.isOnAC)")
-            print("  - Is Lid Closed: \(isClamshellClosed)")
         }
         
         return shouldPrevent

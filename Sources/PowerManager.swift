@@ -1,103 +1,125 @@
 import Foundation
+import AppKit
 
 final class PowerManager {
     private var caffeinateProcess: Process?
+    private var caffeinatePipe: Pipe?
 
     var isEnabled: Bool {
         let output = shell("/usr/bin/pmset", "-g")
-        return output.contains("SleepDisabled\t\t1") || output.contains("SleepDisabled        1")
+        let lowerOutput = output.lowercased()
+        return lowerOutput.contains("sleepdisabled") && lowerOutput.contains("1")
     }
 
     func enable() {
-        print("[CoffeeGuard] Enabling sleep prevention...")
+        print("[AlwaysOn] Enabling sleep prevention...")
         
-        // Prevent sleep (including lid close) - use -a for all power sources
-        // 确保在电池和电源适配器模式下都禁用休眠
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "disablesleep", "1")
-        
-        // Prevent disk sleep
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "disksleep", "0")
-        
-        // Keep network alive when display sleeps
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "networkoversleep", "1")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "tcpkeepalive", "1")
-        
-        // Set display sleep times (display can sleep, but system won't)
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-b", "displaysleep", "1")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-c", "displaysleep", "5")
-        
-        // 额外：确保电池模式下也禁用系统休眠（某些Mac需要单独设置）
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-b", "sleep", "0")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-c", "sleep", "0")
 
         startCaffeinate()
         
-        // 验证设置是否生效
-        let verifyOutput = shell("/usr/bin/pmset", "-g")
-        print("[CoffeeGuard] pmset status: \(verifyOutput.contains("SleepDisabled\t\t1") || verifyOutput.contains("SleepDisabled        1") ? "enabled" : "warning - may not be enabled")")
+        if isEnabled {
+            print("[AlwaysOn] Sleep prevention enabled successfully")
+        } else {
+            print("[AlwaysOn] Warning: Sleep prevention may not be enabled")
+        }
     }
 
     func disable() {
-        print("[CoffeeGuard] Disabling sleep prevention...")
+        print("[AlwaysOn] Disabling sleep prevention...")
         
         stopCaffeinate()
 
-        // Restore defaults using -a so it works on both laptops and desktops
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "disablesleep", "0")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "disksleep", "10")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "networkoversleep", "0")
-        
-        // Restore sleep settings for battery and charger
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-b", "sleep", "1")
-        shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-c", "sleep", "0")  // 插电时默认不休眠
-        
+        shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-c", "sleep", "0")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-b", "displaysleep", "2")
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-c", "displaysleep", "5")
         
-        print("[CoffeeGuard] Sleep prevention disabled")
+        print("[AlwaysOn] Sleep prevention disabled")
     }
 
     func sleepNow() {
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "sleepnow")
     }
     
-    /// 启用 Wake-on-Power（插入电源时唤醒休眠的系统）
     func enableWakeOnPower() {
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "womp", "1")
-        print("[CoffeeGuard] Wake-on-Power enabled")
+        print("[AlwaysOn] Wake-on-Power enabled")
     }
     
-    /// 禁用 Wake-on-Power
     func disableWakeOnPower() {
         shell("/usr/bin/sudo", "-n", "/usr/bin/pmset", "-a", "womp", "0")
     }
 
     private func startCaffeinate() {
         stopCaffeinate()
+        
+        shell("/usr/bin/pkill", "-f", "caffeinate.*-ims")
+        usleep(100000)
+        
         let process = Process()
+        let pipe = Pipe()
+        
         process.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
         process.arguments = ["-ims"]
-        try? process.run()
-        caffeinateProcess = process
+        process.standardOutput = pipe
+        process.standardError = pipe
+        
+        process.terminationHandler = { [weak self] process in
+            print("[AlwaysOn] caffeinate terminated")
+            self?.caffeinateProcess = nil
+        }
+        
+        do {
+            try process.run()
+            caffeinateProcess = process
+            caffeinatePipe = pipe
+            print("[AlwaysOn] caffeinate started with PID: \(process.processIdentifier)")
+        } catch {
+            print("[AlwaysOn] Failed to start caffeinate: \(error)")
+        }
     }
 
     private func stopCaffeinate() {
         if let process = caffeinateProcess, process.isRunning {
+            print("[AlwaysOn] Stopping caffeinate (PID: \(process.processIdentifier))")
             process.terminate()
-            caffeinateProcess = nil
+            process.waitUntilExit()
+            print("[AlwaysOn] caffeinate terminated")
         }
+        caffeinateProcess = nil
+        caffeinatePipe = nil
     }
 
     @discardableResult
     private func shell(_ args: String...) -> String {
-        let process = Process()
+        let command = args.joined(separator: " ")
+        let task = Process()
         let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: args[0])
-        process.arguments = Array(args.dropFirst())
-        process.standardOutput = pipe
-        process.standardError = pipe
-        try? process.run()
-        process.waitUntilExit()
+        
+        task.executableURL = URL(fileURLWithPath: "/bin/bash")
+        task.arguments = ["-c", command]
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            print("[AlwaysOn] Shell error: \(error)")
+            return ""
+        }
+        
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return String(data: data, encoding: .utf8) ?? ""
     }
