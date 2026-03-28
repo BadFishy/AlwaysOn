@@ -21,18 +21,6 @@ final class ConfigManager {
         return config.enable_wake_on_power
     }
     
-    var webhookURL: String? {
-        return config.webhook_url
-    }
-    
-    var webhookEnabled: Bool {
-        return config.webhook_enabled
-    }
-    
-    var isWebhookConfigured: Bool {
-        return config.webhook_enabled && config.webhook_url != nil
-    }
-    
     init() {
         configFile = configDirectory.appendingPathComponent("config.json")
         loadConfig()
@@ -74,19 +62,6 @@ final class ConfigManager {
         print("[AlwaysOn] Removed '\(ssid)' from whitelist")
     }
     
-    func setWebhookURL(_ url: String) {
-        config.webhook_url = url
-        config.webhook_enabled = true
-        saveConfig()
-        print("[AlwaysOn] Webhook URL updated")
-    }
-    
-    func setWebhookEnabled(_ enabled: Bool) {
-        config.webhook_enabled = enabled
-        saveConfig()
-        print("[AlwaysOn] Webhook enabled: \(enabled)")
-    }
-    
     private func createDefaultConfig() {
         config = Config()
         saveConfig()
@@ -96,23 +71,19 @@ final class ConfigManager {
         AlwaysOn 配置说明
         =================
         
-        编辑 config.json 添加受信任的 WiFi 网络和推送设置。
+        编辑 config.json 添加受信任的 WiFi 网络。
         
         配置示例:
         {
           "whitelist_wifi": ["家里WiFi", "公司5G"],
           "check_interval": 60,
-          "enable_wake_on_power": true,
-          "webhook_enabled": true,
-          "webhook_url": "https://your-webhook-url.com"
+          "enable_wake_on_power": true
         }
         
         字段说明:
         - whitelist_wifi: 白名单 WiFi 列表
         - check_interval: 检测间隔（秒），默认 60 秒
         - enable_wake_on_power: 休眠时插入电源是否自动唤醒
-        - webhook_enabled: 是否启用 Webhook 推送
-        - webhook_url: Webhook URL
         """
         
         try? readmeContent.write(to: readmeFile, atomically: true, encoding: .utf8)
@@ -140,14 +111,10 @@ struct Config: Codable {
     var whitelist_wifi: [String]
     var check_interval: Int
     var enable_wake_on_power: Bool
-    var webhook_enabled: Bool
-    var webhook_url: String?
     
     init() {
         self.whitelist_wifi = []
         self.check_interval = 60
         self.enable_wake_on_power = true
-        self.webhook_enabled = false
-        self.webhook_url = nil
     }
 }

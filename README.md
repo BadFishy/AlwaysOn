@@ -37,9 +37,7 @@
 | 原生菜单栏 | ✅ | ✅ |
 | **WiFi 白名单** | ❌ | ✅ 连接特定 WiFi 自动防休眠 |
 | **开盖检测** | ❌ | ✅ 自动检测笔记本盖子状态 |
-| **状态推送** | ❌ | ✅ 支持通用 Webhook |
 | **国际化支持** | ❌ | ✅ 中文/英文自动切换 |
-| **增强测试功能** | ❌ | ✅ 配置检查 + HTTP 响应显示 |
 
 ---
 
@@ -52,8 +50,6 @@
 > **智能电池保护** — 每 60 秒检测电量。合盖 + ≤5% → 自动休眠。开盖 → 仅通知。10% 时警告。
 
 > **零配置权限** — 首次启动弹出 macOS 原生密码框，输入一次即永久免密。仅授权 `pmset`。
-
-> **状态推送** — 支持通用 Webhook，状态变化自动推送，远程掌握 Mac 状态。
 
 > **原生菜单栏** — SF Symbols 图标 + 实时电量。开关切换，支持开机自启。无 Dock 图标。
 
@@ -89,9 +85,7 @@ open AlwaysOn.app
 {
   "whitelist_wifi": ["家里5G", "办公室"],
   "check_interval": 60,
-  "enable_wake_on_power": true,
-  "webhook_enabled": true,
-  "webhook_url": "https://your-webhook-url.com"
+  "enable_wake_on_power": true
 }
 ```
 
@@ -102,38 +96,6 @@ open AlwaysOn.app
 | `whitelist_wifi` | 白名单 WiFi 列表，连接这些网络时自动防休眠 | `[]` |
 | `check_interval` | 检测间隔（秒） | `60` |
 | `enable_wake_on_power` | 插入电源时是否自动唤醒 | `true` |
-| `webhook_enabled` | 是否启用 Webhook 推送 | `false` |
-| `webhook_url` | 通用 Webhook URL | `null` |
-
----
-
-## 推送配置
-
-### 通用 Webhook
-
-支持任意兼容的 Webhook 端点：
-
-1. 在菜单栏点击「测试推送」
-2. 输入你的 Webhook URL
-3. 保存并测试
-
-消息格式：
-
-```json
-{
-  "event": "status_changed",
-  "timestamp": "2026-03-28T01:30:00+08:00",
-  "source": "AlwaysOn",
-  "data": {
-    "status": "运行中",
-    "previous_status": "待机",
-    "wifi": "家里5G",
-    "power": "电源适配器",
-    "lid": "合上",
-    "mode": "白名单模式"
-  }
-}
-```
 
 ---
 
@@ -152,7 +114,6 @@ open AlwaysOn.app
 ├── ✓ 开机启动
 ├── ──────────────
 ├── 打开配置文件夹
-├── 测试推送
 ├── ──────────────
 └── 退出
 ```

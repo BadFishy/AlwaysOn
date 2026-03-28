@@ -14,9 +14,17 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-# Copy Info.plist and icon
+# Copy Info.plist, icon and localizations
 cp "$SCRIPT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/"
 cp "$SCRIPT_DIR/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/"
+
+# Copy localization directories
+if [ -d "$SCRIPT_DIR/Resources/en.lproj" ]; then
+    cp -R "$SCRIPT_DIR/Resources/en.lproj" "$APP_BUNDLE/Contents/Resources/"
+fi
+if [ -d "$SCRIPT_DIR/Resources/zh-Hans.lproj" ]; then
+    cp -R "$SCRIPT_DIR/Resources/zh-Hans.lproj" "$APP_BUNDLE/Contents/Resources/"
+fi
 
 # Build universal binary (arm64 + x86_64)
 TMPDIR_BUILD=$(mktemp -d)

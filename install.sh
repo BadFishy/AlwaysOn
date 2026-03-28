@@ -31,20 +31,11 @@ if [ ! -f "$CONFIG_DIR/config.json" ]; then
 {
   "whitelist_wifi": [],
   "check_interval": 60,
-  "enable_wake_on_power": true,
-  "webhook_enabled": false,
-  "webhook_url": null
+  "enable_wake_on_power": true
 }
 EOF
     echo "Created default config at $CONFIG_DIR/config.json"
-    echo "Edit this file to add trusted WiFi networks and webhook settings."
-else
-    echo "Config already exists at $CONFIG_DIR/config.json"
-    echo ""
-    echo "Hint: AlwaysOn supports webhook notifications."
-    echo "To enable, add to config:"
-    echo '  "webhook_enabled": true,'
-    echo '  "webhook_url": "https://your-webhook-url.com"'
+    echo "Edit this file to add trusted WiFi networks."
 fi
 
 echo ""

@@ -6,8 +6,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let conditionalController = ConditionalSleepController()
     private let loginItemManager = LoginItemManager()
     
-    private let launchTime = Date()
-    
     private var statusMenuItem: NSMenuItem!
     private var wifiMenuItem: NSMenuItem!
     private var powerMenuItem: NSMenuItem!
@@ -27,8 +25,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setupConditionalController()
         updateMenuState()
         
-        sendLaunchNotification()
-        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
@@ -36,10 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let granted = PrivilegeManager.requestPrivileges()
                 if !granted {
                     DispatchQueue.main.async {
-                        WebhookManager.shared.sendErrorNotification(
-                            errorType: NSLocalizedString("error_type_permission", comment: ""),
-                            details: NSLocalizedString("error_permission_pmset_details", comment: "")
-                        )
                         self.showPermissionAlert()
                     }
                     return
@@ -50,12 +42,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.updateMenuState()
             }
         }
-    }
-    
-    private func sendLaunchNotification() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0"
-        let configStatus = NSLocalizedString("status_normal", comment: "")
-        WebhookManager.shared.sendLaunchNotification(version: version, configStatus: configStatus)
     }
     
     private func showPermissionAlert() {
@@ -117,10 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let configItem = NSMenuItem(title: NSLocalizedString("menu_open_config_folder", comment: ""), action: #selector(openConfigFolder), keyEquivalent: "")
         configItem.target = self
         menu.addItem(configItem)
-        
-        let testWebhookItem = NSMenuItem(title: NSLocalizedString("menu_test_webhook", comment: ""), action: #selector(testWebhook), keyEquivalent: "")
-        testWebhookItem.target = self
-        menu.addItem(testWebhookItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -139,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     private func setupConditionalController() {
-        conditionalController.onStatusChange = { [weak self] status in
+        conditionalController.onStatusChange = { [weak self] _ in
             DispatchQueue.main.async {
                 self?.updateMenuState()
             }
@@ -156,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateMenuState() {
         let (_, detail) = conditionalController.getStatusDescription()
-        let wifiSSID = conditionalController.wifiMonitor.currentSSID ?? NSLocalizedString("webhook_payload_wifi_not_connected", comment: "")
+        let wifiSSID = conditionalController.wifiMonitor.currentSSID ?? NSLocalizedString("wifi_not_connected", comment: "")
         let info = conditionalController.batteryMonitor.currentInfo()
         let lidClosed = isLidClosed()
         
@@ -309,102 +291,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         
         NSWorkspace.shared.open(configPath)
     }
-    
-    @objc private func testWebhook() {
-        if !WebhookManager.shared.isConfigured {
-            showWebhookConfigDialog()
-            return
-        }
-        
-        WebhookManager.shared.sendTestMessage { [weak self] success, statusCode, errorMessage, responseBody in
-            DispatchQueue.main.async {
-                self?.showTestResultAlert(success: success, statusCode: statusCode, errorMessage: errorMessage, responseBody: responseBody)
-            }
-        }
-    }
-    
-    private func showWebhookConfigDialog() {
-        let alert = NSAlert()
-        alert.messageText = NSLocalizedString("notification_not_configured_title", comment: "")
-        alert.informativeText = NSLocalizedString("notification_not_configured_message", comment: "")
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: NSLocalizedString("notification_save", comment: ""))
-        alert.addButton(withTitle: NSLocalizedString("notification_cancel", comment: ""))
-        
-        let configView = NSView(frame: NSRect(x: 0, y: 0, width: 450, height: 30))
-        
-        let urlLabel = NSTextField(labelWithString: NSLocalizedString("notification_url_label", comment: ""))
-        urlLabel.frame = NSRect(x: 0, y: 4, width: 100, height: 20)
-        configView.addSubview(urlLabel)
-        
-        let urlField = NSTextField(frame: NSRect(x: 110, y: 2, width: 330, height: 24))
-        urlField.placeholderString = "https://your-webhook-url.com"
-        urlField.stringValue = ConfigManager.shared.webhookURL ?? ""
-        configView.addSubview(urlField)
-        
-        alert.accessoryView = configView
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !url.isEmpty {
-                WebhookManager.shared.saveWebhookURL(url)
-                showNotification(title: NSLocalizedString("notification_title", comment: ""), 
-                               body: NSLocalizedString("notification_config_saved", comment: ""))
-                WebhookManager.shared.sendTestMessage { [weak self] success, statusCode, errorMessage, responseBody in
-                    DispatchQueue.main.async {
-                        self?.showTestResultAlert(success: success, statusCode: statusCode, errorMessage: errorMessage, responseBody: responseBody)
-                    }
-                }
-            } else {
-                WebhookManager.shared.setEnabled(false)
-                showNotification(title: NSLocalizedString("notification_title", comment: ""), 
-                               body: NSLocalizedString("notification_config_saved", comment: ""))
-            }
-        }
-    }
-    
-    private func showTestResultAlert(success: Bool, statusCode: Int, errorMessage: String?, responseBody: String?) {
-        let alert = NSAlert()
-        if success {
-            alert.messageText = String(format: NSLocalizedString("webhook_test_success", comment: ""), statusCode)
-            alert.alertStyle = .informational
-        } else if let error = errorMessage {
-            alert.messageText = String(format: NSLocalizedString("webhook_test_error", comment: ""), error)
-            alert.alertStyle = .warning
-        } else {
-            alert.messageText = String(format: NSLocalizedString("webhook_test_failed", comment: ""), statusCode)
-            alert.alertStyle = .warning
-        }
-        
-        if let body = responseBody, !body.isEmpty {
-            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 150))
-            let textView = NSTextView(frame: scrollView.bounds)
-            textView.string = "HTTP \(statusCode)\n\nResponse:\n\(body)"
-            textView.isEditable = false
-            textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-            textView.autoresizingMask = [.width, .height]
-            
-            scrollView.documentView = textView
-            scrollView.hasVerticalScroller = true
-            scrollView.autohidesScrollers = false
-            
-            alert.accessoryView = scrollView
-        }
-        
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-    }
 
     @objc private func quitApp() {
-        sendQuitNotification()
         conditionalController.stop()
         NSApp.terminate(nil)
-    }
-    
-    private func sendQuitNotification() {
-        let runtimeMinutes = Int(Date().timeIntervalSince(launchTime) / 60)
-        WebhookManager.shared.sendQuitNotification(runtimeMinutes: runtimeMinutes)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
