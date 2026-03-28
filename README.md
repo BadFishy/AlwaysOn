@@ -5,6 +5,10 @@
 <h1 align="center">AlwaysOn</h1>
 
 <p align="center">
+  <a href="./README_CN.md">📖 中文文档</a>
+</p>
+
+<p align="center">
   <strong>Your Mac, always awake.</strong><br>
   Keep your Mac running with the lid closed. Built for the AI Agent era.
 </p>
