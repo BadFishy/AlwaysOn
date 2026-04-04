@@ -85,9 +85,9 @@ final class ConfigManager {
                 _config = validatedConfig
             }
             
-            print("[AlwaysOn] Config loaded: \(whitelistWiFi.count) WiFi(s) in whitelist, enabled=\(enabled), ac_mode=\(acMode), battery_mode=\(batteryMode)")
+            FileLogger.shared.log("Config loaded: \(whitelistWiFi.count) WiFi(s) in whitelist, enabled=\(enabled), ac_mode=\(acMode), battery_mode=\(batteryMode)")
         } catch {
-            print("[AlwaysOn] Failed to load config: \(error). Using defaults.")
+            FileLogger.shared.log("Failed to load config: \(error). Using defaults.")
             lock.withLock {
                 _config = Config()
             }
@@ -115,7 +115,7 @@ final class ConfigManager {
         lock.unlock()
         
         saveConfig()
-        print("[AlwaysOn] Added '\(trimmedSSID)' to whitelist")
+        FileLogger.shared.log("Added '\(trimmedSSID)' to whitelist")
         return true
     }
     
@@ -125,7 +125,7 @@ final class ConfigManager {
         lock.unlock()
         
         saveConfig()
-        print("[AlwaysOn] Removed '\(ssid)' from whitelist")
+        FileLogger.shared.log("Removed '\(ssid)' from whitelist")
     }
     
     // MARK: - 设置操作
@@ -136,7 +136,7 @@ final class ConfigManager {
         lock.unlock()
         
         saveConfig()
-        print("[AlwaysOn] Enabled set to \(value)")
+        FileLogger.shared.log("Enabled set to \(value)")
     }
     
     func setAcMode(_ mode: String) {
@@ -147,7 +147,7 @@ final class ConfigManager {
         lock.unlock()
         
         saveConfig()
-        print("[AlwaysOn] AC mode set to \(mode)")
+        FileLogger.shared.log("AC mode set to \(mode)")
     }
     
     func setBatteryMode(_ mode: String) {
@@ -158,7 +158,7 @@ final class ConfigManager {
         lock.unlock()
         
         saveConfig()
-        print("[AlwaysOn] Battery mode set to \(mode)")
+        FileLogger.shared.log("Battery mode set to \(mode)")
     }
     
     // MARK: - 配置持久化
@@ -187,7 +187,7 @@ final class ConfigManager {
             
             try data.write(to: configFile)
         } catch {
-            print("[AlwaysOn] Failed to save config: \(error)")
+            FileLogger.shared.log("Failed to save config: \(error)")
         }
     }
 }

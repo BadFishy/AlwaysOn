@@ -34,15 +34,15 @@ final class ConditionalSleepController {
         let interval = config.checkInterval
         let validInterval = max(1.0, min(interval, 300.0))
         if interval != validInterval {
-            print("[AlwaysOn] Warning: checkInterval \(interval)s is out of range, using \(validInterval)s")
+            FileLogger.shared.log("Warning: checkInterval \(interval)s is out of range, using \(validInterval)s")
         }
         
         checkTimer = Timer.scheduledTimer(withTimeInterval: validInterval, repeats: true) { [weak self] _ in
-            print("[AlwaysOn] Timer fired at \(Date())")
+            FileLogger.shared.log("Timer fired at \(Date())")
             self?.checkConditions()
         }
         
-        print("[AlwaysOn] ConditionalSleepController started (interval: \(validInterval)s)")
+        FileLogger.shared.log("ConditionalSleepController started (interval: \(validInterval)s)")
     }
     
     /// 停止条件检测
@@ -55,7 +55,7 @@ final class ConditionalSleepController {
             powerManager.disable()
         }
         
-        print("[AlwaysOn] ConditionalSleepController stopped")
+        FileLogger.shared.log("ConditionalSleepController stopped")
     }
     
     /// 检测当前条件并决定是否阻止休眠
@@ -67,20 +67,22 @@ final class ConditionalSleepController {
         let isWhitelisted = config.isWhitelisted(wifiMonitor.currentSSID)
         let lidClosed = LidStateProvider.shared.isLidClosed()
         
-        print("[AlwaysOn] 检测: WiFi='\(currentSSID)', 电源=\(isOnAC ? "插电" : "电池"), 白名单=\(isWhitelisted), 合盖=\(lidClosed), enabled=\(config.enabled), 阻止休眠=\(shouldPrevent)")
+        FileLogger.shared.log("检测: WiFi='\(currentSSID)', 电源=\(isOnAC ? "插电" : "电池"), 白名单=\(isWhitelisted), 合盖=\(lidClosed), enabled=\(config.enabled), 阻止休眠=\(shouldPrevent)")
         
         // 只在状态变化时执行操作
         if shouldPrevent != lastShouldPreventSleep {
             if shouldPrevent {
-                print("[AlwaysOn] 启动防休眠 (WiFi: \(currentSSID), 电源: \(isOnAC ? "插电" : "电池"))")
+                FileLogger.shared.log("启动防休眠 (WiFi: \(currentSSID), 电源: \(isOnAC ? "插电" : "电池"))")
                 powerManager.enable()
             } else {
-                print("[AlwaysOn] 停止防休眠 (WiFi: \(currentSSID), 电源: \(isOnAC ? "插电" : "电池"))")
+                FileLogger.shared.log("停止防休眠 (WiFi: \(currentSSID), 电源: \(isOnAC ? "插电" : "电池"))")
                 powerManager.disable()
             }
             
             lastShouldPreventSleep = shouldPrevent
             onStatusChange?()
+        } else if shouldPrevent {
+            powerManager.ensureEnabled()
         }
     }
     

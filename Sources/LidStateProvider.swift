@@ -23,19 +23,19 @@ final class LidStateProvider {
             process.waitUntilExit()
             
             guard process.terminationStatus == 0 else {
-                print("[LidStateProvider] ioreg failed with status: \(process.terminationStatus)")
+                FileLogger.shared.log("ioreg failed with status: \(process.terminationStatus)")
                 return false
             }
             
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else {
-                print("[LidStateProvider] Failed to decode ioreg output")
+                FileLogger.shared.log("Failed to decode ioreg output")
                 return false
             }
             
             return output.contains("\"AppleClamshellState\" = Yes")
         } catch {
-            print("[LidStateProvider] Failed to check lid state: \(error)")
+            FileLogger.shared.log("Failed to check lid state: \(error)")
             return false
         }
     }
