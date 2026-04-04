@@ -2,3 +2,7 @@ AlwaysOn.app/
 AlwaysOn.zip
 .build/
 .DS_Store
+openspec/
+.opencode/
+.github/prompts/
+.github/skills/
