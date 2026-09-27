@@ -2,26 +2,41 @@ import Foundation
 import IOKit.ps
 import UserNotifications
 
+/// 电池状态读取 + 低电量提醒。
+///
+/// 审计修正：
+/// - 旧版 `start()` / `onCriticalBattery` **从未被调用**（`AppDelegate` 只用了
+///   `currentInfo()` 来显示电量），README 承诺的"电量 5% 自动休眠"是死代码；
+///   同时 `enable()` 把电池系统休眠设成 0，等于一路跑到 0% 硬关机。
+/// - 旧版"是否合盖"自己再 `fork/exec` 一次 `ioreg`（`isClamshellClosed()`），
+///   现统一走 `SystemEvents`，零子进程。
+/// - 旧版没有区分"在用电池"与"电池正在放电"（插着电源但未充电时 `isOnAC` 为真，
+///   而只是没在充电不应触发保底）。这里暴露 `isDraining`。
 final class BatteryMonitor {
     private var timer: Timer?
     private let interval: TimeInterval = 60
-    private let criticalThreshold = 5
     private let warningThreshold = 10
 
-    var onBatteryUpdate: ((Int, Bool) -> Void)?  // (percentage, isOnAC)
-    var onCriticalBattery: ((Bool) -> Void)?       // (isClamshellClosed)
+    /// 低电量（≤10%）且在用电池：控制器据此触发保底
+    var onCriticalBattery: (() -> Void)?
 
     struct BatteryInfo {
-        let percentage: Int
+        let percentage: Int          // -1 = 读不到（桌面机）
         let isOnAC: Bool
+        let isDraining: Bool
         var hasBattery: Bool { percentage >= 0 }
     }
 
+    private var lastWarnedLevel: Int?
+
     func start() {
         checkBattery()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        // 加到 .common 模式：菜单跟踪/模态面板期间也照常触发
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.checkBattery()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     func stop() {
@@ -35,19 +50,21 @@ final class BatteryMonitor {
 
     private func checkBattery() {
         let info = readBattery()
-        onBatteryUpdate?(info.percentage, info.isOnAC)
+        // 桌面机没有电池 → 跳过所有电池逻辑
+        guard info.hasBattery, !info.isOnAC else {
+            lastWarnedLevel = nil
+            return
+        }
 
-        // Desktop Macs have no battery — skip all battery logic
-        guard info.hasBattery, !info.isOnAC else { return }
-
-        if info.percentage <= criticalThreshold {
-            let clamshell = isClamshellClosed()
-            onCriticalBattery?(clamshell)
-        } else if info.percentage <= warningThreshold {
-            sendNotification(
-                title: "AlwaysOn",
-                body: "Battery at \(info.percentage)% — will act at \(criticalThreshold)%"
-            )
+        if info.percentage <= warningThreshold {
+            if lastWarnedLevel == nil || (lastWarnedLevel! - info.percentage) >= 5 {
+                lastWarnedLevel = info.percentage
+                sendNotification(
+                    title: "AlwaysOn",
+                    body: "电量 \(info.percentage)% —— 到达下限后会放开休眠"
+                )
+            }
+            onCriticalBattery?()
         }
     }
 
@@ -55,31 +72,19 @@ final class BatteryMonitor {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [Any],
               let first = sources.first,
-              let desc = IOPSGetPowerSourceDescription(snapshot, first as CFTypeRef)?.takeUnretainedValue() as? [String: Any]
+              let desc = IOPSGetPowerSourceDescription(snapshot, first as CFTypeRef)?
+                  .takeUnretainedValue() as? [String: Any]
         else {
-            // No power source info — desktop Mac or error
-            return BatteryInfo(percentage: -1, isOnAC: true)
+            // 无电源信息 —— 桌面 Mac 或读取失败
+            return BatteryInfo(percentage: -1, isOnAC: true, isDraining: false)
         }
 
         let capacity = desc[kIOPSCurrentCapacityKey] as? Int ?? -1
         let source = desc[kIOPSPowerSourceStateKey] as? String ?? ""
         let isOnAC = (source == kIOPSACPowerValue)
+        let draining = (desc[kIOPSIsChargingKey] as? Bool == false) && !isOnAC
 
-        return BatteryInfo(percentage: capacity, isOnAC: isOnAC)
-    }
-
-    private func isClamshellClosed() -> Bool {
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/ioreg")
-        process.arguments = ["-r", "-k", "AppleClamshellState", "-d", "4"]
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        try? process.run()
-        process.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-        return output.contains("\"AppleClamshellState\" = Yes")
+        return BatteryInfo(percentage: capacity, isOnAC: isOnAC, isDraining: draining)
     }
 
     private func sendNotification(title: String, body: String) {

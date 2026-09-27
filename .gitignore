@@ -6,3 +6,7 @@ openspec/
 .opencode/
 .github/prompts/
 .github/skills/
+
+# 本地审计/调研文档：包含本机 WiFi SSID、机型等隐私信息，不上传到公开仓库
+审计报告-意外休眠风险.md
+KEEPAWAKE-RESEARCH.md

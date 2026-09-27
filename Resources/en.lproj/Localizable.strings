@@ -1,12 +1,10 @@
 /* AlwaysOn - English Localizable Strings */
 
-/* App */
-"app_name" = "AlwaysOn";
-
 /* Status */
 "status_will_stay_awake" = "Will stay awake after lid close";
 "status_will_sleep" = "Will not stay awake";
 "status_disabled" = "Sleep prevention disabled";
+"status_inconsistent" = "⚠️ Not effective (overridden by another app)";
 
 /* Menu */
 "menu_power" = "Power: %@";
@@ -15,10 +13,13 @@
 "menu_lid" = "Lid: %@";
 "menu_lid_closed" = "Closed";
 "menu_lid_open" = "Open";
+"menu_lid_unknown" = "Unknown";
 "menu_wifi" = "WiFi: %@";
 "menu_add_to_whitelist" = "Add \"%@\" to Whitelist";
 "menu_remove_from_whitelist" = "Remove \"%@\" from Whitelist";
 "menu_add_whitelist_no_wifi" = "WiFi Not Connected";
+"menu_battery_floor" = "Battery floor: allow sleep below %d%%";
+"menu_battery_floor_off" = "Battery floor: off";
 
 "menu_disable_sleep_prevention" = "Disable Sleep Prevention";
 "menu_enable_sleep_prevention" = "Enable Sleep Prevention";
@@ -34,18 +35,21 @@
 
 /* WiFi */
 "wifi_not_connected" = "Not Connected";
+"wifi_unavailable" = "Unavailable";
 
-/* Permission */
-"permission_alert_title" = "Permission Required";
-"permission_alert_message" = "AlwaysOn needs passwordless pmset access to control system sleep. Please grant permission and restart the app.";
-"permission_alert_quit" = "Quit";
+/* Privilege menu */
+"menu_grant_ok" = "Permission: scoped (%@ commands)";
+"menu_grant_overbroad" = "⚠️ Permission too broad — click to narrow…";
+"menu_grant_missing" = "⚠️ Permission missing — click to grant…";
+
+/* Privilege alert */
+"grant_alert_title_firstrun" = "AlwaysOn needs pmset access";
+"grant_alert_body_firstrun" = "AlwaysOn uses pmset to control system sleep. Clicking Grant shows the system password prompt once; afterwards only these %@ exact commands run without a password — nothing else is affected:\n\n%@\n\nIf you click Cancel, the app keeps running but has no effect (the menu shows \"Not effective\"), and you can grant later at any time.";
+"grant_alert_title_overbroad" = "Recommend narrowing pmset access";
+"grant_alert_body_overbroad" = "A legacy over-broad grant was found: /etc/sudoers.d/pmset allows pmset with ANY arguments without a password — meaning any admin process can force sleep, set a 1-minute sleep timer, or wipe all power settings, all without a password.\n\nRecommended: replace it with a rule containing only these %@ exact commands:\n\n%@\n\nThe rule is validated with visudo and self-tested inside the same privileged session; if the self-test fails it rolls back automatically, so AlwaysOn keeps working either way.";
+"grant_alert_confirm" = "Grant";
+"grant_alert_cancel" = "Cancel";
 
 /* Notifications */
 "notification_added_to_whitelist" = "Added \"%@\" to WiFi whitelist";
 "notification_removed_from_whitelist" = "Removed \"%@\" from WiFi whitelist";
-
-/* WiFi Errors */
-"wifi_error_location_denied" = "Location permission denied. WiFi SSID detection requires location access.";
-"wifi_error_interface" = "WiFi interface not available.";
-"wifi_error_powered_off" = "WiFi is powered off.";
-"wifi_error_ssid_unavailable" = "WiFi SSID not available.";

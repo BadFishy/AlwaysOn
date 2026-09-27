@@ -1,12 +1,10 @@
 /* AlwaysOn - 简体中文本地化字符串 */
 
-/* App */
-"app_name" = "AlwaysOn";
-
 /* Status */
 "status_will_stay_awake" = "合盖后保持唤醒";
 "status_will_sleep" = "未保持唤醒";
 "status_disabled" = "已关闭";
+"status_inconsistent" = "⚠️ 防休眠未生效（被其它程序改写）";
 
 /* Menu */
 "menu_power" = "电源：%@";
@@ -15,10 +13,13 @@
 "menu_lid" = "盖子：%@";
 "menu_lid_closed" = "关闭";
 "menu_lid_open" = "打开";
+"menu_lid_unknown" = "未知";
 "menu_wifi" = "WiFi：%@";
 "menu_add_to_whitelist" = "添加「%@」到白名单";
 "menu_remove_from_whitelist" = "从白名单移除「%@」";
 "menu_add_whitelist_no_wifi" = "WiFi 未连接";
+"menu_battery_floor" = "电池保底：低于 %d%% 放开休眠";
+"menu_battery_floor_off" = "电池保底：已关闭";
 
 "menu_disable_sleep_prevention" = "关闭阻止休眠";
 "menu_enable_sleep_prevention" = "启用阻止休眠";
@@ -34,18 +35,21 @@
 
 /* WiFi */
 "wifi_not_connected" = "未连接";
+"wifi_unavailable" = "读不到";
 
-/* Permission */
-"permission_alert_title" = "需要权限";
-"permission_alert_message" = "AlwaysOn 需要免密码 pmset 权限来控制系统休眠。请授予权限后重新启动应用。";
-"permission_alert_quit" = "退出";
+/* Privilege menu */
+"menu_grant_ok" = "权限：已收窄（%@ 条命令）";
+"menu_grant_overbroad" = "⚠️ 权限过宽，点击收窄…";
+"menu_grant_missing" = "⚠️ 缺少权限，点击授权…";
+
+/* Privilege alert */
+"grant_alert_title_firstrun" = "AlwaysOn 需要 pmset 权限";
+"grant_alert_body_firstrun" = "AlwaysOn 需要用 pmset 控制系统休眠。点击「授权」后会弹一次系统密码框，之后只免密放行下列 %@ 条精确命令，不影响其它任何命令：\n\n%@\n\n若选择「取消」，应用会继续运行但不生效（菜单会显示「防休眠未生效」），你随时可以再授权。";
+"grant_alert_title_overbroad" = "建议收窄 pmset 权限";
+"grant_alert_body_overbroad" = "检测到旧版遗留的过宽授权：/etc/sudoers.d/pmset 对任何参数的 pmset 都免密放行 —— 任何管理员进程都能免密「立刻休眠」「改成一分钟就睡」或「抹掉全部电源设置」。\n\n建议替换为只含下列 %@ 条精确命令的规则：\n\n%@\n\n安装前会用 visudo 校验，并在同一个提权会话里自检；若自检不通过会**自动回滚**，不会影响 AlwaysOn 正常工作。";
+"grant_alert_confirm" = "授权";
+"grant_alert_cancel" = "取消";
 
 /* Notifications */
 "notification_added_to_whitelist" = "已将「%@」添加到 WiFi 白名单";
 "notification_removed_from_whitelist" = "已将「%@」从 WiFi 白名单移除";
-
-/* WiFi Errors */
-"wifi_error_location_denied" = "位置权限被拒绝。WiFi SSID 检测需要位置访问权限。";
-"wifi_error_interface" = "WiFi 接口不可用。";
-"wifi_error_powered_off" = "WiFi 已关闭。";
-"wifi_error_ssid_unavailable" = "WiFi SSID 不可用。";
