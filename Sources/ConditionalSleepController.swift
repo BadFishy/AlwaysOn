@@ -52,6 +52,9 @@ final class ConditionalSleepController {
     /// 最近一次判定说明，供 UI/日志使用
     private(set) var lastReason = "尚未评估"
 
+    /// 上一次"SSID 读不到"的原因，用于只告警一次
+    private var lastSSIDWarningReason: String?
+
     // MARK: - 生命周期
 
     /// 是否已启动（用于让 `stop()` 幂等 —— 信号处理器与 `applicationWillTerminate`
@@ -235,6 +238,20 @@ final class ConditionalSleepController {
         let decision = evaluateShouldPreventSleep(ssidState: ssid)
         lastDecision = decision
         desiredPrevention = decision
+
+        // SSID 读不到是一条**会让白名单失效**的降级路径，不能静默：
+        // 只在原因变化时告警一次，避免每分钟刷屏。
+        if case .unavailable(let why) = ssid {
+            if why != lastSSIDWarningReason {
+                lastSSIDWarningReason = why
+                FileLogger.shared.log("""
+                    ⚠️ WiFi SSID 读不到（\(why)）：白名单无法判定，暂沿用上一次决定。\
+                    若是权限问题，请在菜单里点「定位权限」修复
+                    """)
+            }
+        } else {
+            lastSSIDWarningReason = nil
+        }
 
         let actual = powerManager.readSleepDisabled()
         let info = batteryMonitor.currentInfo()

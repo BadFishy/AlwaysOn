@@ -171,9 +171,17 @@ shows the current grant state and lets you re-run this at any time. Declining is
 app keeps running and reports `⚠️ Not effective` rather than pretending to work.
 
 ### Location Services (optional, for WiFi whitelist)
-Required to read the WiFi SSID. macOS requires Location Services for this. No location data
-is used or stored. Without it the SSID reads as *unavailable* and AlwaysOn keeps its previous
-decision instead of assuming you are on an untrusted network.
+Required to read the WiFi SSID. macOS requires Location Services for this, and there is **no
+permission-free alternative** — on current macOS the SSID is redacted to `<redacted>` for
+`networksetup`, `ipconfig` and `system_profiler` alike. No location data is used or stored.
+Without it the SSID reads as *unavailable*, the menu shows a warning, and AlwaysOn keeps its
+previous decision instead of assuming you are on an untrusted network.
+
+> **Replacing the app revokes this permission.** The app is ad-hoc signed, so every rebuild or
+> reinstall changes its code signature and macOS treats it as a different app. The SSID then
+> silently reads as unavailable and the whitelist stops working until you grant it again —
+> click the **Location** item in the menu. (Granting it while the lid is closed does not work:
+> there is no display for the prompt, so use *Open Settings*.)
 
 ---
 

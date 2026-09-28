@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lidMenuItem: NSMenuItem!
     private var wifiMenuItem: NSMenuItem!
     private var whitelistMenuItem: NSMenuItem!
+    private var locationMenuItem: NSMenuItem!
     private var batteryFloorMenuItem: NSMenuItem!
     private var acModeAlwaysItem: NSMenuItem!
     private var acModeWifiItem: NSMenuItem!
@@ -131,6 +132,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         whitelistMenuItem.target = self
         menu.addItem(whitelistMenuItem)
 
+        locationMenuItem = NSMenuItem(title: "", action: #selector(fixLocationPermission), keyEquivalent: "")
+        locationMenuItem.target = self
+        menu.addItem(locationMenuItem)
+
         batteryFloorMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         batteryFloorMenuItem.isEnabled = false
         menu.addItem(batteryFloorMenuItem)
@@ -237,6 +242,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             whitelistMenuItem.isEnabled = false
         }
 
+        // 定位权限：ad-hoc 签名导致每次重建 app 都可能被回收权限 → WiFi 白名单静默失效
+        let wifi = controller.wifiMonitor
+        if !wifi.isLocationPermissionMissing {
+            locationMenuItem.title = NSLocalizedString("location_ok", comment: "")
+            locationMenuItem.isEnabled = false
+        } else {
+            locationMenuItem.title = NSLocalizedString(
+                wifi.isLocationPermissionDenied ? "location_denied" : "location_missing", comment: "")
+            locationMenuItem.isEnabled = true
+        }
+
         let floor = config.batteryFloor
         batteryFloorMenuItem.title = floor > 0
             ? String(format: NSLocalizedString("menu_battery_floor", comment: ""), floor)
@@ -310,6 +326,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func setBatteryModeAnyWifi() {
         ConfigManager.shared.setBatteryMode("any_wifi")
         controller.checkConditions(reason: "切换电池模式")
+        updateMenuState()
+    }
+
+    /// 修复定位权限：应用是 ad-hoc 签名，重建后权限可能被 TCC 回收，
+    /// 于是一整天的 SSID 都读不到、白名单静默失效。这里给出两条明确出路。
+    @objc private func fixLocationPermission() {
+        let wifi = controller.wifiMonitor
+
+        if wifi.isLocationPermissionDenied {
+            FileLogger.shared.log("定位权限被拒，打开系统设置")
+            WiFiMonitor.openLocationSettings()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("location_alert_title", comment: "")
+        alert.informativeText = NSLocalizedString("location_alert_body", comment: "")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: NSLocalizedString("location_alert_request", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("location_alert_settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("grant_alert_cancel", comment: ""))
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            FileLogger.shared.log("重新请求定位权限")
+            wifi.requestLocationPermissionNow()
+        case .alertSecondButtonReturn:
+            FileLogger.shared.log("打开系统设置的定位服务面板")
+            WiFiMonitor.openLocationSettings()
+        default:
+            break
+        }
         updateMenuState()
     }
 

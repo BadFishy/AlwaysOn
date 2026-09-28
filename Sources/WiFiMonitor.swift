@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import CoreWLAN
 import CoreLocation
 import OSLog
@@ -104,6 +105,44 @@ final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
         case .authorizedWhenInUse, .authorizedAlways: return true
         default: return false
         }
+    }
+
+    /// 定位授权状态。
+    ///
+    /// **应用是 ad-hoc 签名的，每次重新构建/替换 app 都会改变代码签名，macOS 的 TCC
+    /// 会把它当成另一个 app 从而回收定位权限** —— 于是 WiFi 白名单会**静默失效**
+    /// （SSID 变成"读不到"）。实测：一次重建之后，第二天 637 次检测全部读不到 SSID，
+    /// 而当时盖子合着、没有屏幕能显示那个授权弹窗，用户完全不知情。
+    /// 所以把状态暴露给 UI，让它可见、可修。
+    var locationStatus: CLAuthorizationStatus {
+        locationManager?.authorizationStatus ?? .notDetermined
+    }
+
+    /// 定位权限是否缺失（未询问 / 被拒 / 被限制）
+    var isLocationPermissionMissing: Bool {
+        switch locationStatus {
+        case .authorizedWhenInUse, .authorizedAlways: return false
+        default: return true
+        }
+    }
+
+    /// 是否被用户明确拒绝或受限（这种情况只能去系统设置里改）
+    var isLocationPermissionDenied: Bool {
+        switch locationStatus {
+        case .denied, .restricted: return true
+        default: return false
+        }
+    }
+
+    /// 再次发起系统授权询问
+    func requestLocationPermissionNow() {
+        locationManager?.requestWhenInUseAuthorization()
+    }
+
+    /// 打开「系统设置 → 隐私与安全性 → 定位服务」
+    static func openLocationSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")
+        if let url = url { NSWorkspace.shared.open(url) }
     }
 
     /// 请求位置权限（首次使用时调用）

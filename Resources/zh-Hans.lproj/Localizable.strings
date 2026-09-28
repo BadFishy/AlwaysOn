@@ -50,6 +50,15 @@
 "grant_alert_confirm" = "授权";
 "grant_alert_cancel" = "取消";
 
+/* Location permission */
+"location_ok" = "定位权限：已授权";
+"location_missing" = "⚠️ 定位权限未授予（白名单失效）点击修复…";
+"location_denied" = "⚠️ 定位权限被拒（白名单失效）点击前往设置…";
+"location_alert_title" = "定位权限缺失，WiFi 白名单失效";
+"location_alert_body" = "读取 WiFi 名称需要定位权限（macOS 的要求，不使用任何位置数据）。\n\n应用是 ad-hoc 签名的，每次重新构建或替换 app 后，系统会把定位权限回收 —— 于是 SSID 读不到、白名单静默失效。\n\n选择「请求授权」让系统再弹一次；如果弹窗没出现（例如盖子合着、没有屏幕），选「打开系统设置」手动勾选。";
+"location_alert_request" = "请求授权";
+"location_alert_settings" = "打开系统设置";
+
 /* Notifications */
 "notification_added_to_whitelist" = "已将「%@」添加到 WiFi 白名单";
 "notification_removed_from_whitelist" = "已将「%@」从 WiFi 白名单移除";

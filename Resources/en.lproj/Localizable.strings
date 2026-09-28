@@ -50,6 +50,15 @@
 "grant_alert_confirm" = "Grant";
 "grant_alert_cancel" = "Cancel";
 
+/* Location permission */
+"location_ok" = "Location: granted";
+"location_missing" = "⚠️ Location permission missing (whitelist inactive) — click to fix…";
+"location_denied" = "⚠️ Location permission denied (whitelist inactive) — click for Settings…";
+"location_alert_title" = "Location permission missing — WiFi whitelist is inactive";
+"location_alert_body" = "Reading the WiFi network name requires Location permission (a macOS requirement; no location data is used).\n\nThis app is ad-hoc signed, so replacing or rebuilding it makes macOS revoke the permission — the SSID then reads as unavailable and the whitelist silently stops working.\n\nChoose Request to make the system ask again; if no prompt appears (for example the lid is closed and there is no display), choose Open Settings and tick it manually.";
+"location_alert_request" = "Request";
+"location_alert_settings" = "Open Settings";
+
 /* Notifications */
 "notification_added_to_whitelist" = "Added \"%@\" to WiFi whitelist";
 "notification_removed_from_whitelist" = "Removed \"%@\" from WiFi whitelist";
