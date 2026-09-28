@@ -31,7 +31,9 @@ if [ ! -f "$CONFIG_DIR/config.json" ]; then
 {
   "ac_mode": "always",
   "battery_mode": "whitelist",
+  "battery_floor": 5,
   "check_interval": 60,
+  "guard_interval": 1.0,
   "enable_wake_on_power": true,
   "enabled": true,
   "whitelist_wifi": []
