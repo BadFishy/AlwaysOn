@@ -178,6 +178,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
 
+        // 关闭 AppKit 的自动启用/禁用：我们要自己精确控制每一项的可点状态
+        menu.autoenablesItems = false
+
         statusItem.menu = menu
         menu.delegate = self
     }
@@ -245,11 +248,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // 定位权限：ad-hoc 签名导致每次重建 app 都可能被回收权限 → WiFi 白名单静默失效
         let wifi = controller.wifiMonitor
         if !wifi.isLocationPermissionMissing {
+            // 已授权 → 没有可做的事。**把 action 置空**而不是只设 isEnabled：
+            // 这样它与其它信息行一样渲染为灰色且确定不可点，不依赖 isEnabled/自动启用的语义。
             locationMenuItem.title = NSLocalizedString("location_ok", comment: "")
-            locationMenuItem.isEnabled = false
+            locationMenuItem.action = nil          // 确定性不可点
+            locationMenuItem.target = nil
+            locationMenuItem.isEnabled = false     // 且渲染为灰色（autoenablesItems 已关闭，一定生效）
         } else {
             locationMenuItem.title = NSLocalizedString(
                 wifi.isLocationPermissionDenied ? "location_denied" : "location_missing", comment: "")
+            locationMenuItem.action = #selector(fixLocationPermission)
+            locationMenuItem.target = self
             locationMenuItem.isEnabled = true
         }
 
@@ -266,16 +275,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // 权限状态：过宽时高亮提示并可点击修复
         let overbroad = PrivilegeManager.hasOverbroadGrant()
         let scoped = PrivilegeManager.hasScopedGrant()
-        if overbroad {
-            grantMenuItem.title = NSLocalizedString("menu_grant_overbroad", comment: "")
-            grantMenuItem.isEnabled = true
-        } else if !scoped {
-            grantMenuItem.title = NSLocalizedString("menu_grant_missing", comment: "")
+        if overbroad || !scoped {
+            grantMenuItem.title = NSLocalizedString(
+                overbroad ? "menu_grant_overbroad" : "menu_grant_missing", comment: "")
+            grantMenuItem.action = #selector(reconfigureGrant)
+            grantMenuItem.target = self
             grantMenuItem.isEnabled = true
         } else {
             grantMenuItem.title = String(
                 format: NSLocalizedString("menu_grant_ok", comment: ""),
                 String(PrivilegeManager.allowedCommands.count))
+            grantMenuItem.action = nil             // 确定性不可点
+            grantMenuItem.target = nil
             grantMenuItem.isEnabled = false
         }
 
