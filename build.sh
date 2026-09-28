@@ -66,10 +66,32 @@ echo "  Creating universal binary..."
     -output "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 rm -rf "$TMPDIR_BUILD"
 
-# Ad-hoc code sign with entitlements (required for SMAppService + Location)
-codesign -s - --force --deep \
-    --entitlements "$SCRIPT_DIR/Resources/AlwaysOn.entitlements" \
-    "$APP_BUNDLE"
+# Code sign with entitlements (required for SMAppService + Location).
+#
+# 优先使用**真实的签名身份**：ad-hoc 签名每次重建都会改变 cdhash，macOS 的 TCC 会把
+# 新版当成另一个 app 从而回收定位权限 —— 于是 WiFi 白名单会静默失效（实测发生过：
+# 一次重建之后整天 637 次检测全部读不到 SSID，而当时盖子合着没有屏幕显示授权弹窗）。
+# 用固定身份的证书签名后，重建前后被认作同一个 app，权限不再被回收。
+# 可用 SIGN_ID 环境变量显式指定；未找到证书时回退 ad-hoc。
+SIGN_ID="${SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
+    | grep -oE '"(Developer ID Application|Apple Development|Mac Developer)[^"]*"' \
+    | head -1 | tr -d '"')}"
+
+if [ -n "$SIGN_ID" ]; then
+    echo ""
+    echo "  Signing with: $SIGN_ID"
+    codesign -s "$SIGN_ID" --force --deep \
+        --entitlements "$SCRIPT_DIR/Resources/AlwaysOn.entitlements" \
+        "$APP_BUNDLE"
+else
+    echo ""
+    echo "  Signing ad-hoc (no code-signing certificate found)."
+    echo "  ⚠️  注意：ad-hoc 签名下，替换 app 会让 macOS 回收定位权限，WiFi 白名单会失效，"
+    echo "      需要在菜单里点「定位权限」重新授权。安装一张 Apple 开发证书可永久解决。"
+    codesign -s - --force --deep \
+        --entitlements "$SCRIPT_DIR/Resources/AlwaysOn.entitlements" \
+        "$APP_BUNDLE"
+fi
 
 echo ""
 echo "Build successful: $APP_BUNDLE"
