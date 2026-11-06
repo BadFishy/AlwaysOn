@@ -26,6 +26,18 @@
 
 ---
 
+## Origin
+
+This is a **fork** of [糕咖啡 / CoffeeGuard](#) that has since diverged substantially: the upstream
+Feishu/webhook push notifications were removed, the sleep-prevention core was rebuilt around a
+1-second kernel-state watchdog plus `IOPMrootDomain` power events, the sudoers grant was scoped to
+five exact commands, and the WiFi-whitelist/battery-floor logic was made honest about failure.
+It shares the upstream coffee-cup lineage (the menu bar still shows a coffee cup when the Mac is
+being kept awake) but the bundle identity — `com.alwayson.app` — is this fork's own, so it can be
+installed alongside the original.
+
+---
+
 ## Features
 
 - **Clamshell sleep prevention** -- Uses `pmset disablesleep 1` to keep your Mac running with the lid closed. WiFi stays connected, processes keep running.
