@@ -1,0 +1,9 @@
+/* 应用名与权限描述（简体中文）
+   InfoPlist.strings 会覆盖 Info.plist 里的同名键，所以这里才是用户真正看到的名字。
+   注意 bundle identifier 仍然是 com.alwayson.app —— 改名不动它，才能保住定位权限和登录项。 */
+
+"CFBundleName" = "糕咖啡";
+"CFBundleDisplayName" = "糕咖啡";
+
+"NSLocationWhenInUseUsageDescription" = "糕咖啡需要获取位置信息来识别当前连接的 WiFi 网络，以便根据 WiFi 白名单决定是否阻止系统休眠。不会使用或存储任何位置数据。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "糕咖啡需要获取位置信息来识别当前连接的 WiFi 网络，以便根据 WiFi 白名单决定是否阻止系统休眠。不会使用或存储任何位置数据。";

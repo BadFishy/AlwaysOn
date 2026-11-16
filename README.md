@@ -26,6 +26,14 @@
 
 ---
 
+> **Name.** The app is called **CoffeeGuard** in English and **糕咖啡** in Chinese — those are the
+> localised `CFBundleDisplayName` values (`InfoPlist.strings`). The repository, the bundle
+> identifier (`com.alwayson.app`), the executable and this README keep the "AlwaysOn" name for
+> continuity. Keeping the identifier unchanged is deliberate: changing it makes macOS treat the
+> build as a different app, which revokes the Location permission and breaks the login item.
+
+---
+
 ## Origin
 
 This is a **fork** of [糕咖啡 / CoffeeGuard](#) that has since diverged substantially: the upstream
@@ -47,6 +55,7 @@ installed alongside the original.
 - **Manual toggle** -- Enable/disable sleep prevention from the menu bar. Persisted across restarts.
 - **WiFi whitelist** -- Add/remove WiFi networks from the menu bar. Whitelist WiFi keeps your Mac awake even on battery.
 - **Battery floor** -- Below a configurable charge level (default 5%) on battery, prevention is released and the Mac is allowed to sleep, so it can never drain to a hard shutdown.
+- **Mute while the lid is shut** -- When the lid is closed *and* sleep is being prevented, the output device is muted, and the exact previous state is restored on lid open (a Mac that was already muted stays muted). Uses CoreAudio, so no Automation permission prompt. Covers headphones/AirPlay swapped in while muted, restores on quit, and self-heals after a crash.
 - **Honest status** -- The menu bar reflects the *real* kernel state, not a prediction. If something else overrides the flag and AlwaysOn cannot win, you get a ⚠️ state instead of a false "will stay awake".
 - **Launch at login** -- Uses SMAppService (macOS 13+).
 - **Native menu bar** -- SF Symbols icons, no Dock icon, no Electron.
@@ -82,6 +91,7 @@ Config file: `~/.alwayson/config.json`
   "ac_mode": "always",
   "battery_mode": "whitelist",
   "battery_floor": 5,
+  "mute_when_lid_closed": true,
   "check_interval": 60,
   "guard_interval": 1.0,
   "enable_wake_on_power": true,
@@ -99,6 +109,7 @@ Config file: `~/.alwayson/config.json`
 | `battery_floor` | On battery, release prevention at/below this charge (%). `0` disables the guard | `5` |
 | `check_interval` | Condition re-check interval in seconds (5-300) | `60` |
 | `guard_interval` | How often the `disablesleep` flag is verified, in seconds (0.5-10) | `1.0` |
+| `mute_when_lid_closed` | Mute output while the lid is shut and sleep is prevented | `true` |
 | `enable_wake_on_power` | Turn on Wake for Network Access (`womp 1`) | `true` |
 
 Missing or malformed fields fall back to their defaults individually — a partially
@@ -119,6 +130,7 @@ cup.and.saucer.fill / moon.zzz
 ├── WiFi: Home WiFi
 ├── Add "Home WiFi" to Whitelist
 ├── Battery floor: allow sleep below 5%
+├── ✓ Mute when lid closed
 ├── ──────────────
 ├── AC Mode: Always Awake        ✓
 ├── AC Mode: WiFi Required

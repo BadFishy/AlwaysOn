@@ -2,7 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="AlwaysOn"
+# bundle 的显示名（Finder 里看到的）与内部可执行文件名是两件事：
+# 改 bundle 名不会动 CFBundleExecutable，所以登录项/ps/pkill 仍然认 AlwaysOn。
+APP_NAME="糕咖啡"
+EXEC_NAME="AlwaysOn"
 APP_BUNDLE="$SCRIPT_DIR/$APP_NAME.app"
 
 # Xcode 的 /usr/bin/swiftc 是个 shim：未同意 Xcode 许可协议时会直接报
@@ -46,7 +49,7 @@ done
 TMPDIR_BUILD=$(mktemp -d)
 for ARCH in arm64 x86_64; do
     echo "  Compiling for $ARCH..."
-    "$SWIFTC" -o "$TMPDIR_BUILD/$APP_NAME-$ARCH" \
+    "$SWIFTC" -o "$TMPDIR_BUILD/$EXEC_NAME-$ARCH" \
         -sdk "$SDK" \
         -target "${ARCH}-apple-macosx13.0" \
         -framework AppKit \
@@ -61,21 +64,41 @@ done
 
 echo "  Creating universal binary..."
 "$LIPO" -create \
-    "$TMPDIR_BUILD/$APP_NAME-arm64" \
-    "$TMPDIR_BUILD/$APP_NAME-x86_64" \
-    -output "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+    "$TMPDIR_BUILD/$EXEC_NAME-arm64" \
+    "$TMPDIR_BUILD/$EXEC_NAME-x86_64" \
+    -output "$APP_BUNDLE/Contents/MacOS/$EXEC_NAME"
 rm -rf "$TMPDIR_BUILD"
 
 # Code sign with entitlements (required for SMAppService + Location).
 #
-# 优先使用**真实的签名身份**：ad-hoc 签名每次重建都会改变 cdhash，macOS 的 TCC 会把
-# 新版当成另一个 app 从而回收定位权限 —— 于是 WiFi 白名单会静默失效（实测发生过：
-# 一次重建之后整天 637 次检测全部读不到 SSID，而当时盖子合着没有屏幕显示授权弹窗）。
-# 用固定身份的证书签名后，重建前后被认作同一个 app，权限不再被回收。
-# 可用 SIGN_ID 环境变量显式指定；未找到证书时回退 ad-hoc。
-SIGN_ID="${SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null \
-    | grep -oE '"(Developer ID Application|Apple Development|Mac Developer)[^"]*"' \
-    | head -1 | tr -d '"')}"
+# 为什么要固定签名身份：ad-hoc 签名每次重建都会改变 cdhash，macOS 的 TCC 会把新版当成
+# 另一个 app 从而回收定位权限 —— 于是 WiFi 白名单静默失效（实测发生过：一次重建之后
+# 整天 637 次检测全部读不到 SSID，而当时盖子合着、没有屏幕显示授权弹窗）。
+#
+# 优先用**本地自签身份**（放在独立钥匙串里，密码在 ~/.alwayson/signing/keychain.pass）：
+# 它的 designated requirement 只有 `identifier + certificate root`，不含 cdhash，
+# 所以重建后身份不变、权限不会被回收，而且全程无需钥匙串弹窗。
+#
+# 想用 Apple 开发者证书：先由你自己在终端里跑一次（会提示输入登录密码，别把它交给我）
+#   security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+#     -k "" -t private "Apple Development: <你的名字> (XXXXXXXXXX)"
+# 然后用 SIGN_ID="Apple Development: ..." ./build.sh 覆盖。
+LOCAL_KEYCHAIN="${LOCAL_KEYCHAIN:-$HOME/Library/Keychains/coffeeguard-signing.keychain-db}"
+LOCAL_PASS_FILE="${LOCAL_PASS_FILE:-$HOME/.alwayson/signing/keychain.pass}"
+LOCAL_SIGN_NAME="${LOCAL_SIGN_NAME:-CoffeeGuard Local Signing}"
+
+SIGN_ID="${SIGN_ID:-}"
+if [ -z "$SIGN_ID" ] && [ -f "$LOCAL_PASS_FILE" ] && [ -f "$LOCAL_KEYCHAIN" ]; then
+    security unlock-keychain -p "$(cat "$LOCAL_PASS_FILE")" "$LOCAL_KEYCHAIN" >/dev/null 2>&1 || true
+    if security find-certificate -c "$LOCAL_SIGN_NAME" "$LOCAL_KEYCHAIN" >/dev/null 2>&1; then
+        SIGN_ID="$LOCAL_SIGN_NAME"
+    fi
+fi
+if [ -z "$SIGN_ID" ]; then
+    SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null \
+        | grep -oE '"(Developer ID Application|Apple Development|Mac Developer)[^"]*"' \
+        | head -1 | tr -d '"')"
+fi
 
 if [ -n "$SIGN_ID" ]; then
     echo ""
@@ -95,7 +118,7 @@ fi
 
 echo ""
 echo "Build successful: $APP_BUNDLE"
-"$LIPO" -archs "$APP_BUNDLE/Contents/MacOS/$APP_NAME" | sed 's/^/  archs: /'
+"$LIPO" -archs "$APP_BUNDLE/Contents/MacOS/$EXEC_NAME" | sed 's/^/  archs: /'
 echo ""
 echo "Run with:"
 echo "  open $APP_BUNDLE"

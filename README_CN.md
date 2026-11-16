@@ -26,6 +26,13 @@
 
 ---
 
+> **关于名字**：应用显示名是 **糕咖啡**（中文）/ **CoffeeGuard**（英文），由 `InfoPlist.strings`
+> 按语言覆盖 `CFBundleDisplayName`。仓库名、bundle identifier（`com.alwayson.app`）、内部可执行
+> 文件名和这份 README 仍沿用 "AlwaysOn" 以保持连续性。**identifier 故意不改** —— 改了 macOS 会把
+> 它当成另一个 app，导致定位权限被回收、登录项失效。
+
+---
+
 ## 来源
 
 本项目是 **糕咖啡 / CoffeeGuard** 的 fork，之后已大幅分叉：移除了上游的飞书/webhook 推送，把防休眠
@@ -44,6 +51,7 @@
 - **WiFi 白名单** -- 从菜单栏添加/移除 WiFi 网络。白名单中的 WiFi 即使在电池模式下也能保持唤醒。
 - **1 秒守护 + 系统电源事件** -- `disablesleep` 是一个**全局**标志，其它软件（乃至系统）随时可能把它清掉。AlwaysOn 每秒直接读内核状态（IORegistry，零子进程）校验并在毫秒级补写；同时订阅 `IOPMrootDomain` 电源事件 —— 其中合盖通知按 Apple 文档说明是**在睡眠发起之前**送达的。
 - **电池保底** -- 电池供电且电量低于可配置下限（默认 5%）时主动放开休眠，避免一路跑到 0% 硬关机。
+- **合盖静音** -- 盖子合上**且**正在阻止休眠时静音输出设备；开盖后恢复到**原来的状态**（原本就是静音就仍是静音）。走 CoreAudio，不触发「自动化」授权弹窗；静音期间插耳机/切 AirPlay 会把新设备也静音；退出应用、异常崩溃都会恢复。
 - **状态不撒谎** -- 菜单栏与图标显示的是**内核真实状态**，不是配置预测。被外部覆盖且抢不回来时会显示 ⚠️，而不是继续假装"合盖后保持唤醒"。
 - **登录时启动** -- 使用 SMAppService（macOS 13+）。
 - **原生菜单栏应用** -- SF Symbols 图标，无 Dock 图标，无 Electron。
@@ -79,6 +87,7 @@ cd AlwaysOn
   "ac_mode": "always",
   "battery_mode": "whitelist",
   "battery_floor": 5,
+  "mute_when_lid_closed": true,
   "check_interval": 60,
   "guard_interval": 1.0,
   "enable_wake_on_power": true,
@@ -96,6 +105,7 @@ cd AlwaysOn
 | `battery_floor` | 电池供电时低于此电量（%）放开休眠；`0` = 关闭该保护 | `5` |
 | `check_interval` | 条件复核间隔（秒），范围 5-300 | `60` |
 | `guard_interval` | 校验 `disablesleep` 的守护间隔（秒），范围 0.5-10 | `1.0` |
+| `mute_when_lid_closed` | 合盖且阻止休眠时静音输出设备 | `true` |
 | `enable_wake_on_power` | 开启「网络访问唤醒」（`womp 1`） | `true` |
 
 配置项缺失或格式错误时**只回退该字段**为默认值 —— 半个写坏的配置文件不会再把白名单清空。
@@ -115,6 +125,7 @@ cup.and.saucer.fill / moon.zzz
 ├── WiFi：Home WiFi
 ├── 添加 "Home WiFi" 到白名单
 ├── 电池保底：低于 5% 放开休眠
+├── ✓ 合盖静音（开盖恢复）
 ├── ──────────────
 ├── AC 模式：始终保持唤醒        ✓
 ├── AC 模式：需要 WiFi

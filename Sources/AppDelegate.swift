@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var whitelistMenuItem: NSMenuItem!
     private var locationMenuItem: NSMenuItem!
     private var batteryFloorMenuItem: NSMenuItem!
+    private var muteMenuItem: NSMenuItem!
     private var acModeAlwaysItem: NSMenuItem!
     private var acModeWifiItem: NSMenuItem!
     private var batteryModeWhitelistItem: NSMenuItem!
@@ -70,6 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
+        loginItemManager.healOnLaunch()
+
         controller.start()
         updateMenuState()
 
@@ -99,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "AlwaysOn")
+        button.image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: AppInfo.displayName)
         button.imagePosition = .imageLeading
 
         let menu = NSMenu()
@@ -139,6 +142,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         batteryFloorMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         batteryFloorMenuItem.isEnabled = false
         menu.addItem(batteryFloorMenuItem)
+
+        muteMenuItem = NSMenuItem(title: NSLocalizedString("menu_mute_on_lid_close", comment: ""),
+                                  action: #selector(toggleMuteOnLidClose), keyEquivalent: "")
+        muteMenuItem.target = self
+        menu.addItem(muteMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -267,6 +275,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ? String(format: NSLocalizedString("menu_battery_floor", comment: ""), floor)
             : NSLocalizedString("menu_battery_floor_off", comment: "")
 
+        muteMenuItem.state = config.muteWhenLidClosed ? .on : .off
+
         acModeAlwaysItem.state = config.acMode == "always" ? .on : .off
         acModeWifiItem.state = config.acMode == "wifi_required" ? .on : .off
         batteryModeWhitelistItem.state = config.batteryMode == "whitelist" ? .on : .off
@@ -297,13 +307,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch status {
         case .willStayAwake:
             button.image = NSImage(systemSymbolName: "cup.and.saucer.fill",
-                                   accessibilityDescription: "AlwaysOn - \(NSLocalizedString("status_will_stay_awake", comment: ""))")
+                                   accessibilityDescription: "\(AppInfo.displayName) - \(NSLocalizedString("status_will_stay_awake", comment: ""))")
         case .inconsistent:
             button.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill",
-                                   accessibilityDescription: "AlwaysOn - \(NSLocalizedString("status_inconsistent", comment: ""))")
+                                   accessibilityDescription: "\(AppInfo.displayName) - \(NSLocalizedString("status_inconsistent", comment: ""))")
         case .willSleep, .disabled:
             button.image = NSImage(systemSymbolName: "moon.zzz",
-                                   accessibilityDescription: "AlwaysOn - \(NSLocalizedString("status_will_sleep", comment: ""))")
+                                   accessibilityDescription: "\(AppInfo.displayName) - \(NSLocalizedString("status_will_sleep", comment: ""))")
         }
     }
 
@@ -372,6 +382,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateMenuState()
     }
 
+    @objc private func toggleMuteOnLidClose() {
+        let config = ConfigManager.shared
+        config.setMuteWhenLidClosed(!config.muteWhenLidClosed)
+        controller.checkConditions(reason: "切换合盖静音")
+        updateMenuState()
+    }
+
     @objc private func reconfigureGrant() {
         PrivilegeManager.requestSetup { [weak self] granted in
             FileLogger.shared.log("权限重配置结果：\(granted)，\(PrivilegeManager.describeState())")
@@ -391,11 +408,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let config = ConfigManager.shared
         if config.isWhitelisted(currentSSID) {
             config.removeFromWhitelist(currentSSID)
-            showNotification(title: "AlwaysOn",
+            showNotification(title: AppInfo.displayName,
                              body: String(format: NSLocalizedString("notification_removed_from_whitelist", comment: ""), currentSSID))
         } else {
             config.addToWhitelist(currentSSID)
-            showNotification(title: "AlwaysOn",
+            showNotification(title: AppInfo.displayName,
                              body: String(format: NSLocalizedString("notification_added_to_whitelist", comment: ""), currentSSID))
         }
 

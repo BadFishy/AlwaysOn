@@ -60,7 +60,7 @@ final class BatteryMonitor {
             if lastWarnedLevel == nil || (lastWarnedLevel! - info.percentage) >= 5 {
                 lastWarnedLevel = info.percentage
                 sendNotification(
-                    title: "AlwaysOn",
+                    title: AppInfo.displayName,
                     body: "电量 \(info.percentage)% —— 到达下限后会放开休眠"
                 )
             }

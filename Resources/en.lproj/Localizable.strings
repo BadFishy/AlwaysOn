@@ -20,6 +20,7 @@
 "menu_add_whitelist_no_wifi" = "WiFi Not Connected";
 "menu_battery_floor" = "Battery floor: allow sleep below %d%%";
 "menu_battery_floor_off" = "Battery floor: off";
+"menu_mute_on_lid_close" = "Mute when lid closed";
 
 "menu_disable_sleep_prevention" = "Disable Sleep Prevention";
 "menu_enable_sleep_prevention" = "Enable Sleep Prevention";
@@ -31,7 +32,7 @@
 
 "menu_launch_at_login" = "Launch at Login";
 "menu_open_config_folder" = "Open Config Folder";
-"menu_quit" = "Quit AlwaysOn";
+"menu_quit" = "Quit CoffeeGuard";
 
 /* WiFi */
 "wifi_not_connected" = "Not Connected";

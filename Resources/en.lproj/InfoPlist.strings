@@ -1,0 +1,10 @@
+/* App name and permission descriptions (English)
+   InfoPlist.strings overrides the same keys in Info.plist, so this is the name users
+   actually see. The bundle identifier stays com.alwayson.app — renaming it would make
+   macOS treat this as a new app and revoke the Location permission and login item. */
+
+"CFBundleName" = "CoffeeGuard";
+"CFBundleDisplayName" = "CoffeeGuard";
+
+"NSLocationWhenInUseUsageDescription" = "CoffeeGuard needs location access to identify the current WiFi network so it can decide whether to prevent sleep based on your WiFi whitelist. No location data is used or stored.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "CoffeeGuard needs location access to identify the current WiFi network so it can decide whether to prevent sleep based on your WiFi whitelist. No location data is used or stored.";

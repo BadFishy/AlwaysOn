@@ -2,9 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="AlwaysOn"
+APP_NAME="糕咖啡"
+EXEC_NAME="AlwaysOn"      # 内部二进制名（ps / pkill 用它）
 APP_BUNDLE="$SCRIPT_DIR/$APP_NAME.app"
 INSTALL_DIR="/Applications"
+# 旧 bundle 名：安装时一并清掉，避免磁盘上同时存在两个副本
+LEGACY_BUNDLES=("AlwaysOn.app")
 
 if [ ! -d "$APP_BUNDLE" ]; then
     echo "Error: $APP_BUNDLE not found. Run ./build.sh first."
@@ -13,8 +16,15 @@ fi
 
 echo "Installing $APP_NAME to $INSTALL_DIR..."
 
-pkill -x "$APP_NAME" 2>/dev/null || true
+pkill -x "$EXEC_NAME" 2>/dev/null || true
 sleep 1
+
+for legacy in "${LEGACY_BUNDLES[@]}"; do
+    if [ -d "$INSTALL_DIR/$legacy" ]; then
+        echo "  移除旧版本: $INSTALL_DIR/$legacy"
+        rm -rf "$INSTALL_DIR/$legacy"
+    fi
+done
 
 rm -rf "$INSTALL_DIR/$APP_NAME.app"
 cp -R "$APP_BUNDLE" "$INSTALL_DIR/"
@@ -34,6 +44,7 @@ if [ ! -f "$CONFIG_DIR/config.json" ]; then
   "battery_floor": 5,
   "check_interval": 60,
   "guard_interval": 1.0,
+  "mute_when_lid_closed": true,
   "enable_wake_on_power": true,
   "enabled": true,
   "whitelist_wifi": []

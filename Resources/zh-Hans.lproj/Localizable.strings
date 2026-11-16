@@ -20,6 +20,7 @@
 "menu_add_whitelist_no_wifi" = "WiFi 未连接";
 "menu_battery_floor" = "电池保底：低于 %d%% 放开休眠";
 "menu_battery_floor_off" = "电池保底：已关闭";
+"menu_mute_on_lid_close" = "合盖静音（开盖恢复）";
 
 "menu_disable_sleep_prevention" = "关闭阻止休眠";
 "menu_enable_sleep_prevention" = "启用阻止休眠";
@@ -31,7 +32,7 @@
 
 "menu_launch_at_login" = "开机自启";
 "menu_open_config_folder" = "打开配置文件夹";
-"menu_quit" = "退出 AlwaysOn";
+"menu_quit" = "退出 糕咖啡";
 
 /* WiFi */
 "wifi_not_connected" = "未连接";

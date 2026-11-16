@@ -31,6 +31,7 @@ final class ConditionalSleepController {
 
     private let powerManager = PowerManager()
     private let systemEvents = SystemEvents()
+    private let audioMuter = AudioMuter()
     private let config = ConfigManager.shared
 
     private var conditionTimer: Timer?
@@ -64,6 +65,9 @@ final class ConditionalSleepController {
     func start() {
         guard !isRunning else { return }
         isRunning = true
+
+        // 上次异常退出可能留下了「合盖静音」状态，先恢复
+        audioMuter.healOnLaunch()
 
         if config.enableWakeOnPower {
             powerManager.setWakeOnNetwork(true)
@@ -121,6 +125,12 @@ final class ConditionalSleepController {
         batteryMonitor.stop()
         systemEvents.stop()
 
+        // 退出前一定要把音频恢复，否则会把机器永久留在静音状态
+        if audioMuter.isMutedByLidClose {
+            audioMuter.restoreAfterClosedLid()
+            FileLogger.shared.log("🔊 退出前已恢复音频")
+        }
+
         // 退出时把标志恢复成"允许休眠"，避免把全局标志留在禁用状态
         if powerManager.readSleepDisabled() == true {
             powerManager.disable()
@@ -144,8 +154,10 @@ final class ConditionalSleepController {
         checkConditions(reason: "定时")
     }
 
-    /// 守护循环：只做一件事 —— 确保内核标志与期望一致。默认每秒一次。
+    /// 守护循环：确保内核标志与期望一致，并维护「合盖静音」状态。默认每秒一次。
     private func guardTick() {
+        updateAudioMute()
+
         let actual = powerManager.readSleepDisabled()
 
         guard desiredPrevention else {
@@ -276,6 +288,38 @@ final class ConditionalSleepController {
             }
             onStatusChange?()
         }
+
+        updateAudioMute()
+    }
+
+    /// 合盖静音状态机。
+    ///
+    /// 只在「盖子合上 **且** 正在阻止休眠」时静音 —— 如果合盖后本来就要睡，
+    /// 静音没有意义，还可能把机器留在静音状态。恢复的是**原来的状态**（原来是静音就恢复静音）。
+    private func updateAudioMute() {
+        // 静音期间用户可能插了耳机 / 切了 AirPlay，把新设备也静音
+        audioMuter.refreshIfDeviceChanged()
+
+        guard config.muteWhenLidClosed else {
+            if audioMuter.isMutedByLidClose {
+                audioMuter.restoreAfterClosedLid()
+                FileLogger.shared.log("🔊 合盖静音已关闭，音频已恢复")
+            }
+            return
+        }
+
+        let lidClosed = SystemEvents.isLidClosed == true
+        let shouldMute = lidClosed && desiredPrevention
+        guard shouldMute != audioMuter.isMutedByLidClose else { return }
+
+        if shouldMute {
+            if audioMuter.muteForClosedLid() {
+                FileLogger.shared.log("🔇 合盖 + 防休眠中：已静音（开盖或停止防休眠即恢复）")
+            }
+        } else if audioMuter.restoreAfterClosedLid() {
+            FileLogger.shared.log("🔊 已恢复音频原状")
+        }
+        onStatusChange?()
     }
 
     /// 电池保底：低于下限且在用电池 → 强制放开休眠（合盖时直接睡）。

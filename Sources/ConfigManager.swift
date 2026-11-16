@@ -55,6 +55,11 @@ final class ConfigManager {
         return lock.withLock { _config.enable_wake_on_power }
     }
 
+    /// 合盖且处于防休眠状态时是否静音（开盖恢复）
+    var muteWhenLidClosed: Bool {
+        return lock.withLock { _config.mute_when_lid_closed }
+    }
+
     /// 手动开关：是否启用阻止休眠功能
     var enabled: Bool {
         return lock.withLock { _config.enabled }
@@ -111,7 +116,7 @@ final class ConfigManager {
             FileLogger.shared.log("""
                 Config loaded: \(whitelistWiFi.count) WiFi(s) in whitelist, enabled=\(enabled), \
                 ac_mode=\(acMode), battery_mode=\(batteryMode), \
-                guard=\(guardInterval)s, battery_floor=\(batteryFloor)%
+                guard=\(guardInterval)s, battery_floor=\(batteryFloor)%, mute_on_lid_close=\(muteWhenLidClosed)
                 """)
         } catch {
             // 只有在文件真的读不出来/不是合法 JSON 时才回退默认值，
@@ -176,6 +181,15 @@ final class ConfigManager {
         FileLogger.shared.log("AC mode set to \(mode)")
     }
 
+    func setMuteWhenLidClosed(_ value: Bool) {
+        lock.lock()
+        _config.mute_when_lid_closed = value
+        lock.unlock()
+
+        saveConfig()
+        FileLogger.shared.log("Mute-when-lid-closed set to \(value)")
+    }
+
     func setBatteryMode(_ mode: String) {
         guard ["whitelist", "any_wifi"].contains(mode) else { return }
 
@@ -237,6 +251,8 @@ struct Config: Codable {
     var battery_mode: String
     /// 电池电量下限（%）：低于此值且在用电池时强制放开休眠。0 = 关闭。
     var battery_floor: Int
+    /// 合盖且处于防休眠状态时静音（开盖恢复）
+    var mute_when_lid_closed: Bool
     /// 守护循环间隔（秒）：校验 `disablesleep` 是否被外部清零。
     var guard_interval: Double
 
@@ -248,6 +264,7 @@ struct Config: Codable {
         self.ac_mode = "always"
         self.battery_mode = "whitelist"
         self.battery_floor = 5
+        self.mute_when_lid_closed = true
         self.guard_interval = 1.0
     }
 
@@ -267,6 +284,8 @@ struct Config: Codable {
             ?? defaults.battery_mode
         battery_floor = (try? container.decode(Int.self, forKey: .battery_floor))
             ?? defaults.battery_floor
+        mute_when_lid_closed = (try? container.decode(Bool.self, forKey: .mute_when_lid_closed))
+            ?? defaults.mute_when_lid_closed
         guard_interval = (try? container.decode(Double.self, forKey: .guard_interval))
             ?? defaults.guard_interval
     }
